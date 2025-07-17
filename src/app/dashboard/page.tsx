@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { jobs, events, posts, getAuthor, currentUser } from '@/lib/mock-data';
-import { Briefcase, Calendar, MapPin, MessageSquare, PenSquare, PlusCircle } from 'lucide-react';
+import { Briefcase, Calendar, Heart, MapPin, MessageSquare, PenSquare, PlusCircle } from 'lucide-react';
 import Link from 'next/link';
 
 const feedItems = [
@@ -82,7 +82,7 @@ const FeedCard = ({ item }: { item: any }) => {
               <p className="text-sm text-muted-foreground">{item.content}</p>
             </CardContent>
             <CardFooter>
-                <Button variant="ghost" size="sm"><MessageSquare className="mr-2 h-4 w-4"/>Comment</Button>
+                <Button variant="ghost" size="sm"><Heart className="mr-2 h-4 w-4"/>Like</Button>
             </CardFooter>
           </>
         );
