@@ -67,9 +67,6 @@ export default function DashboardLayout({
       >
         <SidebarHeader>
           <Link href="/dashboard" className="flex items-center gap-2">
-            <Button variant="ghost" className="h-10 w-10 p-2 text-primary">
-              <img src="/logo.png" alt="Ion-Alumni Logo" />
-            </Button>
             <span className="font-headline text-xl font-bold transition-all duration-300 group-data-[collapsible=icon]:-translate-x-4 group-data-[collapsible=icon]:opacity-0">
               Ion-Alumni
             </span>

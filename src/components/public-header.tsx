@@ -6,7 +6,6 @@ export function PublicHeader() {
   return (
     <header className="px-4 lg:px-6 h-14 flex items-center bg-background border-b sticky top-0 z-50">
       <Link href="/" className="flex items-center justify-center">
-        <img src="/logo.png" alt="Ion-Alumni Logo" className="h-8 w-8 mr-2" />
         <span className="font-headline text-xl font-bold text-primary">Ion-Alumni</span>
       </Link>
       <nav className="ml-auto flex gap-4 sm:gap-6">
