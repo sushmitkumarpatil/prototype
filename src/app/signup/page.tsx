@@ -62,12 +62,9 @@ export default function SignupPage() {
   }
 
   return (
-    <AuthLayout>
+    <AuthLayout title="Create an Account">
       <Card className="w-full">
-        <CardHeader>
-          <CardTitle className="font-headline text-2xl">Create an Account</CardTitle>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField

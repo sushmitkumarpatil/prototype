@@ -1,13 +1,9 @@
+'use client';
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { cn } from '@/lib/utils';
 import { ThemeProvider } from '@/components/theme-provider';
-
-export const metadata: Metadata = {
-  title: 'Ion-Alumni',
-  description: 'A College Alumni Portal',
-};
 
 export default function RootLayout({
   children,
@@ -17,6 +13,8 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <title>Ion-Alumni</title>
+        <meta name="description" content="A College Alumni Portal" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
@@ -31,8 +29,8 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
-          <Toaster />
+            {children}
+            <Toaster />
         </ThemeProvider>
       </body>
     </html>

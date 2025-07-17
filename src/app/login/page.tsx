@@ -46,12 +46,9 @@ export default function LoginPage() {
   }
 
   return (
-    <AuthLayout>
+    <AuthLayout title="Welcome Back">
       <Card className="w-full">
-        <CardHeader>
-          <CardTitle className="font-headline text-2xl">Welcome Back</CardTitle>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
