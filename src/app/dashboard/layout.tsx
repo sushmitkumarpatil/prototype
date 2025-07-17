@@ -72,7 +72,7 @@ export default function DashboardLayout({
               <GraduationCap className="h-full w-full" />
             </Button>
             <span className="font-headline text-xl font-bold transition-all duration-300 group-data-[collapsible=icon]:-translate-x-4 group-data-[collapsible=icon]:opacity-0">
-              AlmaConnect
+              Ion-Alumni
             </span>
           </Link>
         </SidebarHeader>

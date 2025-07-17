@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import { ThemeProvider } from '@/components/theme-provider';
 
 export const metadata: Metadata = {
-  title: 'AlmaConnect',
+  title: 'Ion-Alumni',
   description: 'A College Alumni Portal',
 };
 
