@@ -5,6 +5,7 @@ import { events, jobs, users } from "@/lib/mock-data";
 import { ArrowRight, Briefcase, Calendar, MapPin, Users } from "lucide-react";
 import Link from "next/link";
 import { PublicFooter } from "@/components/public-footer";
+import { PublicHeader } from "@/components/public-header";
 
 const JobCard = ({ job }: { job: (typeof jobs)[0] }) => {
   return (
@@ -68,6 +69,7 @@ export default function LandingPage() {
 
   return (
     <div className="flex flex-col min-h-screen">
+      <PublicHeader />
       <main className="flex-1">
         {/* Hero Section */}
         <section className="w-full py-12 md:py-24 lg:py-32 bg-background">
@@ -138,7 +140,7 @@ export default function LandingPage() {
               <div className="space-y-2">
                 <h2 className="font-headline text-3xl font-bold tracking-tighter sm:text-5xl">Featured Job Opportunities</h2>
                 <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                  Explore exclusive job and internship openings posted by our esteemed alumni network.
+                  Explore exclusive job and internship openings by our esteemed alumni network.
                 </p>
               </div>
             </div>
