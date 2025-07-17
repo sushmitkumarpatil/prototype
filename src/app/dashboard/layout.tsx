@@ -16,7 +16,6 @@ import {
   Briefcase,
   Calendar,
   ChevronDown,
-  GraduationCap,
   LayoutDashboard,
   LogOut,
   MessageSquare,
@@ -46,6 +45,7 @@ import Link from 'next/link';
 import { currentUser } from '@/lib/mock-data';
 import { usePathname } from 'next/navigation';
 import { useTheme } from 'next-themes';
+import Image from 'next/image';
 
 export default function DashboardLayout({
   children,
@@ -69,7 +69,7 @@ export default function DashboardLayout({
         <SidebarHeader>
           <Link href="/dashboard" className="flex items-center gap-2">
             <Button variant="ghost" className="h-10 w-10 p-2 text-primary">
-              <GraduationCap className="h-full w-full" />
+              <Image src="/logo.png" alt="Ion-Alumni Logo" width={40} height={40} />
             </Button>
             <span className="font-headline text-xl font-bold transition-all duration-300 group-data-[collapsible=icon]:-translate-x-4 group-data-[collapsible=icon]:opacity-0">
               Ion-Alumni

@@ -1,13 +1,15 @@
-import type { ReactNode } from 'react';
-import { GraduationCap } from 'lucide-react';
+'use client';
 
-export function AuthLayout({ children }: { children: ReactNode }) {
+import type {ReactNode} from 'react';
+import Image from 'next/image';
+
+export function AuthLayout({children}: {children: ReactNode}) {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
       <div className="w-full max-w-md">
         <div className="mb-8 flex flex-col items-center">
-          <div className="mb-4 flex items-center gap-2 text-2xl font-bold text-primary">
-            <GraduationCap className="h-8 w-8" />
+          <div className="mb-4 flex items-center gap-3 text-2xl font-bold text-primary">
+            <Image src="/logo.png" alt="Ion-Alumni Logo" width={40} height={40} className="h-10 w-10" />
             <h1 className="font-headline text-3xl font-bold">Ion-Alumni</h1>
           </div>
           <p className="text-muted-foreground">
