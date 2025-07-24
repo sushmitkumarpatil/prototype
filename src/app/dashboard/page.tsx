@@ -4,9 +4,12 @@ import { useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { jobs, events, posts, getAuthor, currentUser } from '@/lib/mock-data';
-import { Briefcase, Calendar, Heart, MapPin, MessageSquare, PenSquare, PlusCircle } from 'lucide-react';
-import Link from 'next/link';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { currentUser, events, getAuthor, jobs, posts } from '@/lib/mock-data';
+import { Briefcase, Calendar, Heart, MapPin, PlusCircle } from 'lucide-react';
 
 const feedItems = [
   ...jobs.map(item => ({ ...item, type: 'job' })),
@@ -109,6 +112,42 @@ const FeedCard = ({ item }: { item: any }) => {
   );
 };
 
+const NewPostDialog = () => (
+   <Dialog>
+    <DialogTrigger asChild>
+       <Button className="bg-accent hover:bg-accent/90">
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Create Post
+        </Button>
+    </DialogTrigger>
+    <DialogContent className="sm:max-w-[425px]">
+      <DialogHeader>
+        <DialogTitle>Create a New Post</DialogTitle>
+        <DialogDescription>
+          Share your thoughts, experiences, or announcements with the community.
+        </DialogDescription>
+      </DialogHeader>
+      <div className="grid gap-4 py-4">
+        <div className="grid grid-cols-4 items-center gap-4">
+          <Label htmlFor="post-title" className="text-right">
+            Title
+          </Label>
+          <Input id="post-title" placeholder="(Optional) e.g. Advice for Aspiring PMs" className="col-span-3" />
+        </div>
+        <div className="grid grid-cols-4 items-start gap-4">
+          <Label htmlFor="post-content" className="text-right pt-2">
+            Content
+          </Label>
+          <Textarea id="post-content" placeholder="What's on your mind?" className="col-span-3" />
+        </div>
+      </div>
+      <DialogFooter>
+        <Button type="submit" className="bg-accent hover:bg-accent/90">Post</Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
+)
+
 
 export default function DashboardPage() {
   const [filter, setFilter] = useState('All');
@@ -125,10 +164,7 @@ export default function DashboardPage() {
           <p className="text-muted-foreground">Welcome back, {currentUser.name}! Here's what's new.</p>
         </div>
         {currentUser.role === 'alumnus' && (
-          <Button className="bg-accent hover:bg-accent/90">
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Create Post
-          </Button>
+          <NewPostDialog />
         )}
       </div>
 
