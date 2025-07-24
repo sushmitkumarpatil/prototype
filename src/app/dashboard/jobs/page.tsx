@@ -1,13 +1,10 @@
 'use client';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { currentUser, getAuthor, jobs } from "@/lib/mock-data";
-import { Briefcase, MapPin, PlusCircle, Search } from "lucide-react";
+import { getAuthor, jobs } from "@/lib/mock-data";
+import { Briefcase, MapPin, Search } from "lucide-react";
 
 const JobCard = ({ job }: { job: (typeof jobs)[0] }) => {
   const author = getAuthor(job.authorId);
@@ -40,67 +37,6 @@ const JobCard = ({ job }: { job: (typeof jobs)[0] }) => {
   )
 }
 
-const NewJobDialog = () => (
-    <Dialog>
-    <DialogTrigger asChild>
-       <Button className="bg-accent hover:bg-accent/90">
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Post New Job
-        </Button>
-    </DialogTrigger>
-    <DialogContent className="sm:max-w-[500px]">
-      <DialogHeader>
-        <DialogTitle>Post a New Job</DialogTitle>
-        <DialogDescription>
-          Fill in the details below to post a new job opportunity for students and fellow alumni.
-        </DialogDescription>
-      </DialogHeader>
-      <div className="grid gap-4 py-4">
-        <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="job-title" className="text-right">
-            Job Title
-          </Label>
-          <Input id="job-title" placeholder="e.g. Frontend Developer" className="col-span-3" />
-        </div>
-        <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="company" className="text-right">
-            Company
-          </Label>
-          <Input id="company" placeholder="e.g. Innovate Corp" className="col-span-3" />
-        </div>
-        <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="location" className="text-right">
-            Location
-          </Label>
-          <Input id="location" placeholder="e.g. Remote or Mumbai" className="col-span-3" />
-        </div>
-         <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="job-type" className="text-right">
-            Job Type
-          </Label>
-            <Select>
-                <SelectTrigger className="col-span-3"><SelectValue placeholder="Select job type" /></SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="full-time">Full-time</SelectItem>
-                    <SelectItem value="internship">Internship</SelectItem>
-                    <SelectItem value="part-time">Part-time</SelectItem>
-                </SelectContent>
-            </Select>
-        </div>
-        <div className="grid grid-cols-4 items-start gap-4">
-          <Label htmlFor="description" className="text-right pt-2">
-            Description
-          </Label>
-          <Textarea id="description" placeholder="Job responsibilities, qualifications, etc." className="col-span-3" />
-        </div>
-      </div>
-      <DialogFooter>
-        <Button type="submit" className="bg-accent hover:bg-accent/90">Post Job</Button>
-      </DialogFooter>
-    </DialogContent>
-  </Dialog>
-)
-
 export default function JobsPage() {
   return (
     <div className="container mx-auto">
@@ -109,9 +45,6 @@ export default function JobsPage() {
           <h1 className="font-headline text-3xl font-bold">Job & Internship Board</h1>
           <p className="text-muted-foreground">Discover opportunities posted by alumni.</p>
         </div>
-        {currentUser.role === 'alumnus' && (
-          <NewJobDialog />
-        )}
       </div>
 
       <Card className="mb-6">
