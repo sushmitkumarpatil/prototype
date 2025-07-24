@@ -4,7 +4,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getAuthor, jobs } from "@/lib/mock-data";
-import { Briefcase, MapPin, Search } from "lucide-react";
+import { Briefcase, MapPin, Search, Plus } from "lucide-react";
+import { NewJobDialog } from "@/components/new-content-dialogs";
 
 const JobCard = ({ job }: { job: (typeof jobs)[0] }) => {
   const author = getAuthor(job.authorId);
@@ -45,6 +46,12 @@ export default function JobsPage() {
           <h1 className="font-headline text-3xl font-bold">Job & Internship Board</h1>
           <p className="text-muted-foreground">Discover opportunities posted by alumni.</p>
         </div>
+         <NewJobDialog>
+            <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Post New Job
+            </Button>
+        </NewJobDialog>
       </div>
 
       <Card className="mb-6">

@@ -164,5 +164,5 @@ export const posts: Post[] = [
 
 export const getAuthor = (authorId: number) => users.find((user) => user.id === authorId);
 
-export const currentUser: User = users[2]; // Simulating logged-in user as Anjali Singh (student)
-// export const currentUser: User = users[0]; // To test as an Alumnus
+//export const currentUser: User = users[2]; // Simulating logged-in user as Anjali Singh (student)
+ export const currentUser: User = users[1]; // To test as an Alumnus

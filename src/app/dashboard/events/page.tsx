@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { events } from "@/lib/mock-data";
-import { MapPin, Search } from "lucide-react";
+import { MapPin, Search, Plus } from "lucide-react";
+import { NewEventDialog } from "@/components/new-content-dialogs";
 
 const EventCard = ({ event }: { event: (typeof events)[0] }) => {
   return (
@@ -34,6 +35,12 @@ export default function EventsPage() {
           <h1 className="font-headline text-3xl font-bold">Events & Announcements</h1>
           <p className="text-muted-foreground">Connect with the community at upcoming events.</p>
         </div>
+         <NewEventDialog>
+            <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Announce Event
+            </Button>
+        </NewEventDialog>
       </div>
 
       <Card className="mb-6">

@@ -5,7 +5,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { currentUser, events, getAuthor, jobs, posts } from '@/lib/mock-data';
-import { Briefcase, Calendar, Heart, MapPin } from 'lucide-react';
+import { Briefcase, Calendar, Heart, MapPin, Plus } from 'lucide-react';
+import { NewPostDialog } from '@/components/new-content-dialogs';
 
 const feedItems = [
   ...jobs.map(item => ({ ...item, type: 'job' })),
@@ -122,6 +123,12 @@ export default function DashboardPage() {
           <h1 className="font-headline text-3xl font-bold">Dashboard</h1>
           <p className="text-muted-foreground">Welcome back, {currentUser.name}! Here's what's new.</p>
         </div>
+        <NewPostDialog>
+            <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Create Post
+            </Button>
+        </NewPostDialog>
       </div>
 
       <div className="mb-6 flex items-center gap-2">
