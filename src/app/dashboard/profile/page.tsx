@@ -8,8 +8,10 @@ import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { currentUser, getAuthor, jobs, events, posts } from '@/lib/mock-data';
-import { Building, Briefcase, Calendar, Edit, Globe, Linkedin, Mail, MapPin, PenSquare, Phone, Trash2 } from 'lucide-react';
+import { Building, Briefcase, Calendar, Edit, Globe, Linkedin, Mail, MapPin, PenSquare, Phone, Trash2, Camera } from 'lucide-react';
 import Link from 'next/link';
+import { useState } from 'react';
+import { EditImageDialog } from '@/components/edit-image-dialog';
 
 const getInitials = (name: string) => {
   return name.split(' ').map((n) => n[0]).join('');
@@ -125,17 +127,40 @@ const StudentProfile = () => {
 
 
 export default function ProfilePage() {
+  const [coverImage, setCoverImage] = useState("https://placehold.co/1200x200");
+  const [profileImage, setProfileImage] = useState(currentUser.avatar);
+
   return (
     <div className="container mx-auto max-w-4xl">
       <div className="relative mb-6">
-        <div className="h-36 w-full rounded-lg bg-muted" data-ai-hint="profile banner">
-            <img src="https://placehold.co/1200x200" className="h-full w-full object-cover rounded-lg" alt="Profile banner" />
+        <div className="group relative h-36 w-full rounded-lg bg-muted" data-ai-hint="profile banner">
+            <img src={coverImage} className="h-full w-full object-cover rounded-lg" alt="Profile banner" />
+            <EditImageDialog 
+                onSave={setCoverImage} 
+                aspectRatio={1200 / 200}
+                trigger={
+                    <Button variant="outline" size="icon" className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Camera className="h-4 w-4" />
+                    </Button>
+                }
+             />
         </div>
         <div className="absolute -bottom-12 left-6">
-          <Avatar className="h-24 w-24 border-4 border-background">
-            <AvatarImage src={currentUser.avatar} />
-            <AvatarFallback className="text-3xl">{getInitials(currentUser.name)}</AvatarFallback>
-          </Avatar>
+          <div className="group relative">
+            <Avatar className="h-24 w-24 border-4 border-background">
+              <AvatarImage src={profileImage} />
+              <AvatarFallback className="text-3xl">{getInitials(currentUser.name)}</AvatarFallback>
+            </Avatar>
+             <EditImageDialog 
+                onSave={setProfileImage} 
+                aspectRatio={1}
+                trigger={
+                    <Button variant="outline" size="icon" className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity rounded-full h-10 w-10">
+                        <Camera className="h-5 w-5" />
+                    </Button>
+                }
+             />
+          </div>
         </div>
       </div>
       
