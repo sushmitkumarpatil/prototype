@@ -45,14 +45,14 @@ import {
   DropdownMenuSubContent,
   DropdownMenuGroup,
 } from '@/components/ui/dropdown-menu';
-import Link from 'next/link';
+import Link from '@/components/ui/link';
 import { currentUser } from '@/lib/mock-data';
 import { usePathname } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import { NewEventDialog, NewJobDialog, NewPostDialog } from '@/components/new-content-dialogs';
 
 
-export default function DashboardLayout({
+export function DashboardLayoutClient({
   children,
 }: {
   children: React.ReactNode;
@@ -95,10 +95,10 @@ export default function DashboardLayout({
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
-                isActive={pathname === '/dashboard/profile'}
+                isActive={pathname === '/profile'}
                 tooltip={{ children: 'My Profile' }}
               >
-                <Link href="/dashboard/profile">
+                <Link href="/profile">
                   <UserCircle />
                   <span>My Profile</span>
                 </Link>
@@ -107,10 +107,10 @@ export default function DashboardLayout({
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
-                isActive={pathname === '/dashboard/alumni'}
+                isActive={pathname === '/alumni'}
                 tooltip={{ children: 'Find Alumni' }}
               >
-                <Link href="/dashboard/alumni">
+                <Link href="/alumni">
                   <Users />
                   <span>Find Alumni</span>
                 </Link>
@@ -119,10 +119,10 @@ export default function DashboardLayout({
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
-                isActive={pathname.startsWith('/dashboard/jobs')}
+                isActive={pathname.startsWith('/jobs')}
                 tooltip={{ children: 'Jobs' }}
               >
-                <Link href="/dashboard/jobs">
+                <Link href="/jobs">
                   <Briefcase />
                   <span>Jobs</span>
                 </Link>
@@ -131,10 +131,10 @@ export default function DashboardLayout({
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
-                isActive={pathname.startsWith('/dashboard/events')}
+                isActive={pathname.startsWith('/events')}
                 tooltip={{ children: 'Events' }}
               >
-                <Link href="/dashboard/events">
+                <Link href="/events">
                   <Calendar />
                   <span>Events</span>
                 </Link>
@@ -143,10 +143,10 @@ export default function DashboardLayout({
              <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
-                isActive={pathname === '/dashboard/messages'}
+                isActive={pathname === '/messages'}
                 tooltip={{ children: 'Messages' }}
               >
-                <Link href="/dashboard/messages">
+                <Link href="/messages">
                   <MessageSquare />
                   <span>Messages</span>
                 </Link>
@@ -197,7 +197,7 @@ export default function DashboardLayout({
                   <DropdownMenuContent align="end">
                     <DropdownMenuLabel>My Account</DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild><Link href="/dashboard/profile">Profile</Link></DropdownMenuItem>
+                    <DropdownMenuItem asChild><Link href="/profile">Profile</Link></DropdownMenuItem>
                     <DropdownMenuItem>Settings</DropdownMenuItem>
                     <DropdownMenuSub>
                       <DropdownMenuSubTrigger>

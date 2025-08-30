@@ -46,7 +46,7 @@ import {
   DropdownMenuSubContent,
   DropdownMenuGroup,
 } from '@/components/ui/dropdown-menu';
-import Link from 'next/link';
+import Link from '@/components/ui/link';
 import { currentUser } from '@/lib/mock-data';
 import { usePathname } from 'next/navigation';
 import { useTheme } from 'next-themes';

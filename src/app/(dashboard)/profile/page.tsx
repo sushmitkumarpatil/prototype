@@ -4,12 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { currentUser, getAuthor, jobs, events, posts } from '@/lib/mock-data';
-import { Building, Briefcase, Calendar, Edit, Globe, Linkedin, Mail, MapPin, PenSquare, Phone, Trash2, Camera } from 'lucide-react';
-import Link from 'next/link';
+import { Briefcase, Calendar, Edit, Globe, Linkedin, Mail, MapPin, Phone, Trash2, Camera } from 'lucide-react';
 import { useState } from 'react';
 import { EditImageDialog } from '@/components/edit-image-dialog';
 
@@ -127,91 +125,110 @@ const StudentProfile = () => {
 
 
 export default function ProfilePage() {
-  const [coverImage, setCoverImage] = useState("https://placehold.co/1200x200");
   const [profileImage, setProfileImage] = useState(currentUser.avatar);
 
   return (
-    <div className="container mx-auto max-w-4xl">
-      <div className="relative mb-6">
-        <div className="group relative h-36 w-full rounded-lg bg-muted" data-ai-hint="profile banner">
-            <img src={coverImage} className="h-full w-full object-cover rounded-lg" alt="Profile banner" />
-            <EditImageDialog 
-                onSave={setCoverImage} 
-                aspectRatio={1200 / 200}
-                trigger={
-                    <Button variant="outline" size="icon" className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Camera className="h-4 w-4" />
-                    </Button>
-                }
-             />
-        </div>
-        <div className="absolute -bottom-12 left-6">
-          <div className="group relative">
-            <Avatar className="h-24 w-24 border-4 border-background">
-              <AvatarImage src={profileImage} />
-              <AvatarFallback className="text-3xl">{getInitials(currentUser.name)}</AvatarFallback>
-            </Avatar>
-             <EditImageDialog 
-                onSave={setProfileImage} 
-                aspectRatio={1}
-                trigger={
-                    <Button variant="outline" size="icon" className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity rounded-full h-10 w-10">
-                        <Camera className="h-5 w-5" />
-                    </Button>
-                }
-             />
-          </div>
-        </div>
-      </div>
-      
-      <div className="mt-16 flex items-end justify-between">
-        <div>
-          <h1 className="font-headline text-3xl font-bold">{currentUser.name}</h1>
-          <p className="text-muted-foreground">{currentUser.course} &middot; Batch of {currentUser.batch}</p>
-        </div>
-        <Button><Edit className="mr-2 h-4 w-4" />Edit Profile</Button>
-      </div>
-      <Separator className="my-6" />
-      <Tabs defaultValue="profile">
-        <TabsList>
-          <TabsTrigger value="profile">Profile Details</TabsTrigger>
-          <TabsTrigger value="settings">Privacy & Settings</TabsTrigger>
-        </TabsList>
-
-        {currentUser.role === 'alumnus' ? <AlumniProfile /> : <StudentProfile />}
-
-        <TabsContent value="settings">
-           <Card>
-            <CardHeader>
-              <CardTitle>Privacy Settings</CardTitle>
-              <CardDescription>Control what information is visible to others.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-                <div className="flex items-center justify-between rounded-lg border p-4">
-                    <div>
-                        <Label htmlFor="show-contact" className="font-semibold">Show Contact Number</Label>
-                        <p className="text-xs text-muted-foreground">Allow students and alumni to see your phone number.</p>
-                    </div>
-                    <Switch id="show-contact" />
-                </div>
-                 <div className="flex items-center justify-between rounded-lg border p-4">
-                    <div>
-                        <Label htmlFor="show-email" className="font-semibold">Show Email Address</Label>
-                        <p className="text-xs text-muted-foreground">Allow students and alumni to see your email.</p>
-                    </div>
-                    <Switch id="show-email" defaultChecked />
-                </div>
-                 <div className="flex items-center justify-between rounded-lg border p-4">
-                    <div>
-                        <Label htmlFor="show-location" className="font-semibold">Show Current Location</Label>
-                        <p className="text-xs text-muted-foreground">Display your city on your public profile.</p>
-                    </div>
-                    <Switch id="show-location" defaultChecked />
-                </div>
+    <div className="container mx-auto max-w-6xl p-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        {/* Left Column */}
+        <div className="md:col-span-1 space-y-6">
+          <Card>
+            <CardContent className="flex flex-col items-center p-6 text-center">
+              <div className="group relative mb-4">
+                <Avatar className="h-32 w-32">
+                  <AvatarImage src={profileImage} />
+                  <AvatarFallback className="text-5xl">{getInitials(currentUser.name)}</AvatarFallback>
+                </Avatar>
+                <EditImageDialog 
+                    onSave={setProfileImage} 
+                    aspectRatio={1}
+                    trigger={
+                        <Button variant="outline" size="icon" className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity rounded-full h-10 w-10">
+                            <Camera className="h-5 w-5" />
+                        </Button>
+                    }
+                 />
+              </div>
+              <h1 className="font-headline text-2xl font-bold">{currentUser.name}</h1>
+              <p className="text-muted-foreground">{currentUser.jobTitle} at {currentUser.company}</p>
+              <p className="text-sm text-muted-foreground mt-1">{currentUser.course} &middot; Batch of {currentUser.batch}</p>
+              <Button className="mt-4 w-full"><Edit className="mr-2 h-4 w-4" />Edit Profile</Button>
             </CardContent>
           </Card>
-        </TabsContent>
-      </Tabs>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Contact Information</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div className="flex items-center gap-3">
+                <Mail className="h-5 w-5 text-muted-foreground" />
+                <span>{currentUser.email}</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <Phone className="h-5 w-5 text-muted-foreground" />
+                <span>{currentUser.phone}</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <Globe className="h-5 w-5 text-muted-foreground" />
+                <a href={currentUser.website} target="_blank" rel="noreferrer" className="text-primary hover:underline">{currentUser.website}</a>
+              </div>
+              <div className="flex items-center gap-3">
+                <Linkedin className="h-5 w-5 text-muted-foreground" />
+                <a href={currentUser.linkedin} target="_blank" rel="noreferrer" className="text-primary hover:underline">LinkedIn</a>
+              </div>
+               <div className="flex items-center gap-3">
+                <MapPin className="h-5 w-5 text-muted-foreground" />
+                <span>{currentUser.location}</span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right Column */}
+        <div className="md:col-span-2">
+          <Tabs defaultValue="profile">
+            <TabsList>
+              <TabsTrigger value="profile">Profile Details</TabsTrigger>
+              <TabsTrigger value="settings">Privacy & Settings</TabsTrigger>
+            </TabsList>
+
+            {currentUser.role === 'alumnus' ? <AlumniProfile /> : <StudentProfile />}
+
+            <TabsContent value="settings">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Privacy Settings</CardTitle>
+                  <CardDescription>Control what information is visible to others.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    <div className="flex items-center justify-between rounded-lg border p-4">
+                        <div>
+                            <Label htmlFor="show-contact" className="font-semibold">Show Contact Number</Label>
+                            <p className="text-xs text-muted-foreground">Allow students and alumni to see your phone number.</p>
+                        </div>
+                        <Switch id="show-contact" />
+                    </div>
+                    <div className="flex items-center justify-between rounded-lg border p-4">
+                        <div>
+                            <Label htmlFor="show-email" className="font-semibold">Show Email Address</Label>
+                            <p className="text-xs text-muted-foreground">Allow students and alumni to see your email.</p>
+                        </div>
+                        <Switch id="show-email" defaultChecked />
+                    </div>
+                    <div className="flex items-center justify-between rounded-lg border p-4">
+                        <div>
+                            <Label htmlFor="show-location" className="font-semibold">Show Current Location</Label>
+                            <p className="text-xs text-muted-foreground">Display your city on your public profile.</p>
+                        </div>
+                        <Switch id="show-location" defaultChecked />
+                    </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </div>
+      </div>
     </div>
   );
 }

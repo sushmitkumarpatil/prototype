@@ -7,14 +7,14 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { users } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import { Paperclip, Search, Send } from "lucide-react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 
 const getInitials = (name: string) => {
   return name.split(' ').map((n) => n[0]).join('');
 }
 
 export default function MessagesPage() {
-    const conversations = users.filter(u => u.role === 'alumnus').slice(0, 4);
+    const conversations = useMemo(() => users.filter(u => u.role === 'alumnus').slice(0, 4), []);
     const [selectedConversation, setSelectedConversation] = useState(conversations[0]);
 
     const messages = [

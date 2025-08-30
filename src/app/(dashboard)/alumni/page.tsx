@@ -1,4 +1,5 @@
 'use client';
+import { useMemo } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -39,7 +40,7 @@ const AlumniCard = ({ user }: { user: (typeof users)[0] }) => {
 }
 
 export default function AlumniPage() {
-  const alumni = users.filter(u => u.role === 'alumnus');
+  const alumni = useMemo(() => users.filter(u => u.role === 'alumnus'), []);
 
   return (
      <div className="container mx-auto">

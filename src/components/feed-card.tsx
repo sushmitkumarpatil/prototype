@@ -1,25 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { currentUser, events, getAuthor, jobs, posts } from '@/lib/mock-data';
-import { Briefcase, Calendar, Heart, MapPin, Plus } from 'lucide-react';
-import { NewPostDialog } from '@/components/new-content-dialogs';
-
-const feedItems = [
-  ...jobs.map(item => ({ ...item, type: 'job' })),
-  ...events.map(item => ({ ...item, type: 'event' })),
-  ...posts.map(item => ({ ...item, type: 'post' })),
-].sort((a, b) => new Date(b.postedAt || b.date).getTime() - new Date(a.postedAt || a.date).getTime());
-
+import { getAuthor } from '@/lib/mock-data';
+import { Briefcase, Calendar, Heart, MapPin } from 'lucide-react';
 
 const getInitials = (name: string) => {
     return name.split(' ').map((n) => n[0]).join('');
 }
 
-const FeedCard = ({ item }: { item: any }) => {
+export const FeedCard = ({ item }: { item: any }) => {
   const author = getAuthor(item.authorId);
   if (!author) return null;
 
@@ -61,7 +53,7 @@ const FeedCard = ({ item }: { item: any }) => {
               </div>
             </CardHeader>
             <CardContent>
-              <img src={item.image} alt={item.title} data-ai-hint="event cover" className="mb-4 aspect-video w-full rounded-lg object-cover" />
+                <Image src={item.image} alt={item.title} width={500} height={281} data-ai-hint="event cover" className="mb-4 aspect-video w-full rounded-lg object-cover" />
               <p className="text-sm text-muted-foreground line-clamp-2">{item.description}</p>
             </CardContent>
              <CardFooter className="flex justify-between">
@@ -81,8 +73,9 @@ const FeedCard = ({ item }: { item: any }) => {
             <CardContent>
               <p className="text-sm text-muted-foreground">{item.content}</p>
             </CardContent>
-            <CardFooter>
+            <CardFooter className="gap-2">
                 <Button variant="ghost" size="sm"><Heart className="mr-2 h-4 w-4"/>Like</Button>
+                <Button variant="ghost" size="sm">Comment</Button>
             </CardFooter>
           </>
         );
@@ -108,41 +101,3 @@ const FeedCard = ({ item }: { item: any }) => {
     </Card>
   );
 };
-
-export default function DashboardPage() {
-  const [filter, setFilter] = useState('All');
-  const filteredItems = feedItems.filter(item => {
-    if (filter === 'All') return true;
-    return item.type.toLowerCase() === filter.toLowerCase().slice(0, -1);
-  });
-
-  return (
-    <div className="container mx-auto max-w-4xl">
-      <div className="mb-6 flex flex-col items-start gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="font-headline text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground">Welcome back, {currentUser.name}! Here's what's new.</p>
-        </div>
-        <NewPostDialog>
-            <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Create Post
-            </Button>
-        </NewPostDialog>
-      </div>
-
-      <div className="mb-6 flex items-center gap-2">
-        <h3 className="text-sm font-semibold">Filter feed:</h3>
-        {['All', 'Jobs', 'Events', 'Posts'].map(f => (
-          <Button key={f} variant={filter === f ? 'default' : 'ghost'} size="sm" onClick={() => setFilter(f)}>
-            {f}
-          </Button>
-        ))}
-      </div>
-      
-      <div className="space-y-6">
-        {filteredItems.map(item => <FeedCard key={`${item.type}-${item.id}`} item={item} />)}
-      </div>
-    </div>
-  );
-}
