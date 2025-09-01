@@ -3,19 +3,49 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Chrome } from 'lucide-react';
 import Link from '@/components/ui/link';
 import AuthLayout from '@/components/auth-layout';
 import { useRouter } from 'next/navigation';
+import React, { useState } from 'react';
+import { useToast } from '@/hooks/use-toast';
+import { loginUser } from '@/lib/api/auth';
+import { saveAuthData } from '@/lib/auth';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { toast } = useToast();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, you'd have authentication logic here.
-    // For now, we'll just redirect to the dashboard.
-    router.push('/dashboard');
+    setIsLoading(true);
+    try {
+      const response = await loginUser(email, password);
+      if (response.success) {
+        saveAuthData(response);
+        toast({
+          title: 'Login Successful',
+          description: 'Redirecting to your dashboard...',
+        });
+        router.push('/dashboard');
+      } else {
+        toast({
+          title: 'Login Failed',
+          description: response.message || 'An unexpected error occurred.',
+          variant: 'destructive',
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Login Error',
+        description: error.message || 'An unexpected error occurred.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -35,6 +65,9 @@ export default function LoginPage() {
               type="email"
               placeholder="m@example.com"
               required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={isLoading}
             />
           </div>
           <div className="grid gap-2">
@@ -47,24 +80,17 @@ export default function LoginPage() {
                 Forgot your password?
               </Link>
             </div>
-            <Input id="password" type="password" required />
+            <Input
+              id="password"
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={isLoading}
+            />
           </div>
-          <Button type="submit" className="w-full">
-            Login
-          </Button>
-          <div className="relative my-4">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">
-                Or continue with
-              </span>
-            </div>
-          </div>
-          <Button variant="outline" className="w-full">
-            <Chrome className="mr-2 h-4 w-4" />
-            Login with Google
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading ? 'Logging in...' : 'Login'}
           </Button>
         </div>
       </form>
