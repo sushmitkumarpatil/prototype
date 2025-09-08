@@ -1,38 +1,38 @@
 'use client';
+import AnimatedSection from "@/components/animated-section";
+import { PublicFooter } from "@/components/public-footer";
+import { PublicHeader } from "@/components/public-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { events, jobs, users } from "@/lib/mock-data";
+import { motion } from "framer-motion";
 import { ArrowRight, Briefcase, Calendar, MapPin, Users } from "lucide-react";
 import Link from "next/link";
-import { PublicFooter } from "@/components/public-footer";
-import { PublicHeader } from "@/components/public-header";
-import AnimatedSection from "@/components/animated-section";
-import { motion } from "framer-motion";
 
 const JobCard = ({ job }: { job: (typeof jobs)[0] }) => {
   return (
-    <Card className="flex flex-col">
+    <Card className="flex flex-col border-border hover:border-primary/50 transition-all duration-300 hover:shadow-xl bg-card group">
       <CardHeader>
         <div className="flex items-start gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-muted">
-                <Briefcase className="h-6 w-6 text-primary" />
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-primary/20 to-accent/20 border border-primary/30 group-hover:from-primary/30 group-hover:to-accent/30 transition-all duration-300">
+                <Briefcase className="h-6 w-6 text-primary group-hover:text-primary/80" />
             </div>
             <div>
-                <CardTitle className="font-headline text-lg">{job.title}</CardTitle>
-                <CardDescription>{job.company}</CardDescription>
+                <CardTitle className="font-headline text-lg text-card-foreground group-hover:text-primary transition-colors duration-300">{job.title}</CardTitle>
+                <CardDescription className="text-muted-foreground">{job.company}</CardDescription>
             </div>
         </div>
       </CardHeader>
       <CardContent className="flex-grow">
         <div className="flex w-full items-center justify-between text-sm text-muted-foreground">
           <div className="flex items-center gap-1.5">
-            <MapPin className="h-4 w-4" /> {job.location}
+            <MapPin className="h-4 w-4 text-primary/70" /> {job.location}
           </div>
-          <div className="rounded-md bg-secondary px-2 py-1 text-xs font-medium text-secondary-foreground">{job.type}</div>
+          <div className="rounded-md bg-gradient-to-r from-primary/10 to-accent/10 px-2 py-1 text-xs font-medium text-primary border border-primary/20">{job.type}</div>
         </div>
       </CardContent>
       <CardFooter>
-        <Button asChild className="w-full">
+        <Button asChild className="w-full bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-primary-foreground shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]">
             <Link href="/login">View Details <ArrowRight className="ml-2 h-4 w-4" /></Link>
         </Button>
       </CardFooter>
@@ -42,20 +42,20 @@ const JobCard = ({ job }: { job: (typeof jobs)[0] }) => {
 
 const EventCard = ({ event }: { event: (typeof events)[0] }) => {
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden border-border hover:border-primary/50 transition-all duration-300 hover:shadow-xl bg-card group">
       <CardHeader className="p-0">
-        <img src={event.image} alt={event.title} data-ai-hint="event poster" className="aspect-video w-full object-cover" />
+        <img src={event.image} alt={event.title} data-ai-hint="event poster" className="aspect-video w-full object-cover group-hover:scale-105 transition-transform duration-300" />
       </CardHeader>
       <CardContent className="p-4">
         <p className="text-sm font-semibold text-accent">{new Date(event.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
-        <h3 className="font-headline text-lg font-bold">{event.title}</h3>
+        <h3 className="font-headline text-lg font-bold text-card-foreground group-hover:text-primary transition-colors duration-300">{event.title}</h3>
         <p className="text-sm text-muted-foreground line-clamp-2">{event.description}</p>
       </CardContent>
       <CardFooter className="flex justify-between p-4 pt-0">
         <div className="flex items-center text-sm text-muted-foreground">
-            <MapPin className="mr-1.5 h-4 w-4" /> {event.location}
+            <MapPin className="mr-1.5 h-4 w-4 text-primary/70" /> {event.location}
         </div>
-        <Button asChild variant="outline" size="sm">
+        <Button asChild variant="outline" size="sm" className="border-primary/30 hover:border-primary/50 hover:bg-primary/5 text-card-foreground hover:text-primary transition-all duration-300">
             <Link href="/login">Details & RSVP</Link>
         </Button>
       </CardFooter>
@@ -70,11 +70,11 @@ export default function LandingPage() {
     const alumniCount = users.filter(u => u.role === 'alumnus').length;
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen bg-background">
       <PublicHeader />
       <main className="flex-1">
         {/* Hero Section */}
-        <AnimatedSection className="w-full py-12 md:py-24 lg:py-32 bg-background">
+        <AnimatedSection className="w-full py-12 md:py-24 lg:py-32 bg-gradient-to-br from-background via-primary/5 to-accent/5">
           <div className="container px-4 md:px-6">
             <div className="grid gap-6 lg:grid-cols-[1fr_400px] lg:gap-12 xl:grid-cols-[1fr_600px]">
               <div className="flex flex-col justify-center space-y-4">
@@ -84,7 +84,7 @@ export default function LandingPage() {
                   transition={{ duration: 0.5 }}
                 >
                   <div className="space-y-2">
-                    <h1 className="font-headline text-4xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none text-primary">
+                    <h1 className="font-headline text-4xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none bg-gradient-to-r from-primary via-primary to-accent bg-clip-text text-transparent">
                       Connect. Grow. Succeed.
                     </h1>
                     <p className="max-w-[600px] text-muted-foreground md:text-xl">
@@ -98,10 +98,10 @@ export default function LandingPage() {
                   transition={{ duration: 0.5, delay: 0.2 }}
                   className="flex flex-col gap-2 min-[400px]:flex-row"
                 >
-                  <Button asChild size="lg" className="bg-accent hover:bg-accent/90">
+                  <Button asChild size="lg" className="bg-gradient-to-r from-accent to-accent/90 hover:from-accent/90 hover:to-accent text-accent-foreground shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105">
                     <Link href="/signup">Join Now</Link>
                   </Button>
-                  <Button asChild size="lg" variant="secondary">
+                  <Button asChild size="lg" variant="secondary" className="border-primary/30 hover:border-primary/50 hover:bg-primary/5 text-card-foreground hover:text-primary transition-all duration-300">
                     <Link href="/login">Member Login</Link>
                   </Button>
                 </motion.div>
@@ -115,34 +115,42 @@ export default function LandingPage() {
                 height="400"
                 alt="Alumni collaborating"
                 data-ai-hint="alumni collaborating"
-                className="mx-auto aspect-video overflow-hidden rounded-xl object-cover sm:w-full lg:order-last"
+                className="mx-auto aspect-video overflow-hidden rounded-xl object-cover sm:w-full lg:order-last shadow-2xl border border-primary/20 hover:border-primary/40 transition-all duration-300"
               />
             </div>
           </div>
         </AnimatedSection>
 
         {/* Stats Section */}
-        <AnimatedSection className="w-full py-12 md:py-24 lg:py-32 bg-muted">
+        <AnimatedSection className="w-full py-12 md:py-24 lg:py-32 bg-gradient-to-br from-primary/5 via-accent/5 to-primary/5">
             <div className="container px-4 md:px-6">
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-                    <motion.div initial={{ opacity: 0, y: 50 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }} className="text-center">
-                        <Users className="mx-auto h-12 w-12 text-primary" />
-                        <h3 className="mt-2 text-3xl font-bold">{alumniCount}+</h3>
+                    <motion.div initial={{ opacity: 0, y: 50 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }} className="text-center p-6 bg-card rounded-lg border border-primary/20 hover:border-primary/40 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10 group">
+                        <div className="mx-auto h-12 w-12 bg-gradient-to-br from-primary/20 to-accent/20 rounded-lg flex items-center justify-center group-hover:from-primary/30 group-hover:to-accent/30 transition-all duration-300">
+                          <Users className="h-6 w-6 text-primary" />
+                        </div>
+                        <h3 className="mt-2 text-3xl font-bold text-card-foreground group-hover:text-primary transition-colors duration-300">{alumniCount}+</h3>
                         <p className="text-muted-foreground">Active Alumni</p>
                     </motion.div>
-                     <motion.div initial={{ opacity: 0, y: 50 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }} className="text-center">
-                        <Briefcase className="mx-auto h-12 w-12 text-primary" />
-                        <h3 className="mt-2 text-3xl font-bold">{jobs.length}+</h3>
+                     <motion.div initial={{ opacity: 0, y: 50 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }} className="text-center p-6 bg-card rounded-lg border border-primary/20 hover:border-primary/40 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10 group">
+                        <div className="mx-auto h-12 w-12 bg-gradient-to-br from-primary/20 to-accent/20 rounded-lg flex items-center justify-center group-hover:from-primary/30 group-hover:to-accent/30 transition-all duration-300">
+                          <Briefcase className="h-6 w-6 text-primary" />
+                        </div>
+                        <h3 className="mt-2 text-3xl font-bold text-card-foreground group-hover:text-primary transition-colors duration-300">{jobs.length}+</h3>
                         <p className="text-muted-foreground">Jobs Posted</p>
                     </motion.div>
-                     <motion.div initial={{ opacity: 0, y: 50 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }} className="text-center">
-                        <Calendar className="mx-auto h-12 w-12 text-primary" />
-                        <h3 className="mt-2 text-3xl font-bold">{events.length}+</h3>
+                     <motion.div initial={{ opacity: 0, y: 50 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }} className="text-center p-6 bg-card rounded-lg border border-primary/20 hover:border-primary/40 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10 group">
+                        <div className="mx-auto h-12 w-12 bg-gradient-to-br from-primary/20 to-accent/20 rounded-lg flex items-center justify-center group-hover:from-primary/30 group-hover:to-accent/30 transition-all duration-300">
+                          <Calendar className="h-6 w-6 text-primary" />
+                        </div>
+                        <h3 className="mt-2 text-3xl font-bold text-card-foreground group-hover:text-primary transition-colors duration-300">{events.length}+</h3>
                         <p className="text-muted-foreground">Events Organized</p>
                     </motion.div>
-                     <motion.div initial={{ opacity: 0, y: 50 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.4 }} className="text-center">
-                        <Users className="mx-auto h-12 w-12 text-primary" />
-                        <h3 className="mt-2 text-3xl font-bold">100+</h3>
+                     <motion.div initial={{ opacity: 0, y: 50 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.4 }} className="text-center p-6 bg-card rounded-lg border border-primary/20 hover:border-primary/40 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10 group">
+                        <div className="mx-auto h-12 w-12 bg-gradient-to-br from-primary/20 to-accent/20 rounded-lg flex items-center justify-center group-hover:from-primary/30 group-hover:to-accent/30 transition-all duration-300">
+                          <Users className="h-6 w-6 text-primary" />
+                        </div>
+                        <h3 className="mt-2 text-3xl font-bold text-card-foreground group-hover:text-primary transition-colors duration-300">100+</h3>
                         <p className="text-muted-foreground">Companies</p>
                     </motion.div>
                 </div>
@@ -154,7 +162,7 @@ export default function LandingPage() {
           <div className="container px-4 md:px-6">
             <div className="flex flex-col items-center justify-center space-y-4 text-center">
               <div className="space-y-2">
-                <h2 className="font-headline text-3xl font-bold tracking-tighter sm:text-5xl">Featured Job Opportunities</h2>
+                <h2 className="font-headline text-3xl font-bold tracking-tighter sm:text-5xl bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">Featured Job Opportunities</h2>
                 <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
                   Explore exclusive job and internship openings by our esteemed alumni network.
                 </p>
@@ -171,11 +179,11 @@ export default function LandingPage() {
         </AnimatedSection>
 
         {/* Upcoming Events Section */}
-        <AnimatedSection className="w-full py-12 md:py-24 lg:py-32 bg-muted">
+        <AnimatedSection className="w-full py-12 md:py-24 lg:py-32 bg-gradient-to-br from-accent/5 via-primary/5 to-accent/5">
           <div className="container px-4 md:px-6">
              <div className="flex flex-col items-center justify-center space-y-4 text-center">
               <div className="space-y-2">
-                <h2 className="font-headline text-3xl font-bold tracking-tighter sm:text-5xl">Upcoming Events</h2>
+                <h2 className="font-headline text-3xl font-bold tracking-tighter sm:text-5xl bg-gradient-to-r from-accent to-primary bg-clip-text text-transparent">Upcoming Events</h2>
                 <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
                   Join our upcoming events to network, learn, and reconnect with the community.
                 </p>

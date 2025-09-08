@@ -34,7 +34,7 @@ export default function AuthLayout({
   };
 
   return (
-    <div className="w-full min-h-screen lg:grid lg:grid-cols-2">
+    <div className="w-full min-h-screen lg:grid lg:grid-cols-2 bg-gradient-to-br from-background via-primary/5 to-accent/5">
       <div className="flex items-center justify-center py-12 z-10">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -42,18 +42,18 @@ export default function AuthLayout({
           exit={{ opacity: 0, y: 20 }}
           transition={{ duration: 0.5 }}
         >
-          <Card className="mx-auto w-[400px] max-w-full p-6 shadow-2xl">
+          <Card className="mx-auto w-[400px] max-w-full p-8 shadow-2xl border-primary/20 bg-gradient-to-br from-card via-primary/5 to-accent/5">
             <CardHeader className="text-center">
-              <CardTitle className="text-3xl font-bold tracking-tight">
+              <CardTitle className="text-3xl font-bold tracking-tight bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
                 {title}
               </CardTitle>
-              <CardDescription>{description}</CardDescription>
+              <CardDescription className="text-muted-foreground">{description}</CardDescription>
             </CardHeader>
             <CardContent>
               {children}
-              <div className="mt-6 text-center text-sm">
+              <div className="mt-8 text-center text-sm">
                 {footerText}{' '}
-                <Link href={footerLink} className="font-semibold underline">
+                <Link href={footerLink} className="font-semibold text-primary hover:text-primary/80 underline underline-offset-4 hover:underline-offset-2 transition-all duration-300">
                   {footerLinkText}
                 </Link>
               </div>
@@ -61,14 +61,14 @@ export default function AuthLayout({
           </Card>
         </motion.div>
       </div>
-      <div className="hidden lg:block relative bg-muted overflow-hidden">
+      <div className="hidden lg:block relative bg-gradient-to-br from-primary/10 via-accent/10 to-primary/10 overflow-hidden">
         <Particles
           id="tsparticles"
           init={particlesInit}
           options={{
             background: {
               color: {
-                value: '#f1f5f9', // A light slate color
+                value: 'transparent',
               },
             },
             fpsLimit: 60,
@@ -88,13 +88,13 @@ export default function AuthLayout({
             },
             particles: {
               color: {
-                value: '#64748b', // A darker slate color
+                value: '#3B82F6', // Primary blue
               },
               links: {
-                color: '#94a3b8', // A lighter slate color
+                color: '#8B5CF6', // Accent purple
                 distance: 150,
                 enable: true,
-                opacity: 0.2,
+                opacity: 0.3,
                 width: 1,
               },
               collisions: {
@@ -107,7 +107,7 @@ export default function AuthLayout({
                   default: 'bounce',
                 },
                 random: true,
-                speed: 1,
+                speed: 1.5,
                 straight: false,
               },
               number: {
@@ -115,26 +115,30 @@ export default function AuthLayout({
                   enable: true,
                   area: 800,
                 },
-                value: 60,
+                value: 80,
               },
               opacity: {
-                value: 0.3,
+                value: 0.4,
               },
               shape: {
                 type: 'circle',
               },
               size: {
-                value: { min: 1, max: 3 },
+                value: { min: 1, max: 4 },
               },
             },
             detectRetina: true,
           }}
         />
         <div className="absolute inset-0 flex items-center justify-center">
-          {/* You can add a logo or an illustration here */}
-          <h1 className="text-5xl font-black text-slate-700/20">
-            Ion-Alumni
-          </h1>
+          <div className="text-center">
+            <h1 className="text-6xl font-black bg-gradient-to-r from-primary/20 to-accent/20 bg-clip-text text-transparent mb-4">
+              Ion-Alumni
+            </h1>
+            <p className="text-lg text-muted-foreground/60 max-w-md">
+              Connect. Grow. Succeed. Join our exclusive alumni network and unlock endless opportunities.
+            </p>
+          </div>
         </div>
       </div>
     </div>

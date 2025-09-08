@@ -7,9 +7,11 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { currentUser, getAuthor, jobs, events, posts } from '@/lib/mock-data';
-import { Briefcase, Calendar, Edit, Globe, Linkedin, Mail, MapPin, Phone, Trash2, Camera } from 'lucide-react';
+import { Briefcase, Calendar, Edit, Globe, Linkedin, Mail, MapPin, Phone, Trash2, Camera, Clock, Eye, Image as ImageIcon } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { useState } from 'react';
 import { EditImageDialog } from '@/components/edit-image-dialog';
+import { EditProfileDialog } from '@/components/edit-profile-dialog';
 
 const getInitials = (name: string) => {
   return name.split(' ').map((n) => n[0]).join('');
@@ -34,10 +36,145 @@ const ProfilePostCard = ({ item, type }: { item: any, type: 'Job' | 'Event' | 'P
   )
 }
 
+const ProfileEventCard = ({ event, onEdit, onDelete, onView }: { 
+  event: any, 
+  onEdit?: (event: any) => void,
+  onDelete?: (event: any) => void,
+  onView?: (event: any) => void
+}) => {
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      weekday: 'short', 
+      month: 'short', 
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const getEventStatus = (dateString: string) => {
+    const eventDate = new Date(dateString);
+    const now = new Date();
+    
+    if (eventDate < now) {
+      return { status: 'Past', variant: 'secondary' as const };
+    } else if (eventDate.getTime() - now.getTime() < 24 * 60 * 60 * 1000) { // Within 24 hours
+      return { status: 'Today', variant: 'destructive' as const };
+    } else {
+      return { status: 'Upcoming', variant: 'default' as const };
+    }
+  };
+
+  const eventStatus = getEventStatus(event.date);
+
+  const handleView = () => {
+    if (onView) {
+      onView(event);
+    } else {
+      // Default behavior - could open a modal or navigate to event details
+      console.log('View event:', event);
+    }
+  };
+
+  const handleEdit = () => {
+    if (onEdit) {
+      onEdit(event);
+    } else {
+      // Default behavior - could open edit modal
+      console.log('Edit event:', event);
+    }
+  };
+
+  const handleDelete = () => {
+    if (onDelete) {
+      onDelete(event);
+    } else {
+      // Default behavior - could show confirmation dialog
+      console.log('Delete event:', event);
+    }
+  };
+
+  return (
+    <Card>
+      <CardContent className="p-4">
+        <div className="flex items-start gap-4">
+          <div className="h-12 w-12 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+            <ImageIcon className="h-6 w-6 text-muted-foreground" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between">
+              <div className="flex-1 min-w-0">
+                <h3 className="font-medium text-base">{event.title}</h3>
+                <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
+                  {event.description}
+                </p>
+                <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-1">
+                    <Clock className="h-4 w-4" />
+                    {formatDate(event.date)}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <MapPin className="h-4 w-4" />
+                    {event.location}
+                  </div>
+                </div>
+                <div className="mt-2">
+                  <Badge variant={eventStatus.variant}>
+                    {eventStatus.status}
+                  </Badge>
+                </div>
+              </div>
+              <div className="flex gap-2 ml-4">
+                <Button variant="outline" size="sm" onClick={handleView}>
+                  <Eye className="h-4 w-4" />
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleEdit}>
+                  <Edit className="h-4 w-4" />
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="text-destructive hover:text-destructive"
+                  onClick={handleDelete}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
 const AlumniProfile = () => {
+  const [userEvents, setUserEvents] = useState(events.filter(e => e.authorId === currentUser.id));
   const userJobs = jobs.filter(j => j.authorId === currentUser.id);
-  const userEvents = events.filter(e => e.authorId === currentUser.id);
   const userPosts = posts.filter(p => p.authorId === currentUser.id);
+
+  const handleViewEvent = (event: any) => {
+    // Implement view event functionality
+    console.log('Viewing event:', event);
+    // Could open a modal or navigate to event details page
+  };
+
+  const handleEditEvent = (event: any) => {
+    // Implement edit event functionality
+    console.log('Editing event:', event);
+    // Could open an edit modal or navigate to edit page
+  };
+
+  const handleDeleteEvent = (event: any) => {
+    // Implement delete event functionality
+    if (confirm(`Are you sure you want to delete "${event.title}"?`)) {
+      setUserEvents(prev => prev.filter(e => e.id !== event.id));
+      console.log('Deleted event:', event);
+      // Here you would typically make an API call to delete the event
+    }
+  };
 
   return (
     <TabsContent value="profile" className="space-y-6">
@@ -77,7 +214,15 @@ const AlumniProfile = () => {
                 {userJobs.map(job => <ProfilePostCard key={job.id} item={job} type="Job" />)}
               </TabsContent>
               <TabsContent value="events" className="mt-4 space-y-4">
-                {userEvents.map(event => <ProfilePostCard key={event.id} item={event} type="Event" />)}
+                {userEvents.map(event => (
+                  <ProfileEventCard 
+                    key={event.id} 
+                    event={event}
+                    onView={handleViewEvent}
+                    onEdit={handleEditEvent}
+                    onDelete={handleDeleteEvent}
+                  />
+                ))}
               </TabsContent>
               <TabsContent value="posts" className="mt-4 space-y-4">
                 {userPosts.map(post => <ProfilePostCard key={post.id} item={post} type="Post" />)}
@@ -152,7 +297,6 @@ export default function ProfilePage() {
               <h1 className="font-headline text-2xl font-bold">{currentUser.name}</h1>
               <p className="text-muted-foreground">{currentUser.jobTitle} at {currentUser.company}</p>
               <p className="text-sm text-muted-foreground mt-1">{currentUser.course} &middot; Batch of {currentUser.batch}</p>
-              <Button className="mt-4 w-full"><Edit className="mr-2 h-4 w-4" />Edit Profile</Button>
             </CardContent>
           </Card>
 
@@ -180,6 +324,18 @@ export default function ProfilePage() {
                <div className="flex items-center gap-3">
                 <MapPin className="h-5 w-5 text-muted-foreground" />
                 <span>{currentUser.location}</span>
+              </div>
+              
+              {/* Edit Profile Button */}
+              <div className="pt-3 border-t">
+                <EditProfileDialog 
+                  currentUser={currentUser}
+                  onSave={(updatedData) => {
+                    // Handle profile update here
+                    console.log('Profile updated:', updatedData);
+                    // You can add API call here to update the profile
+                  }}
+                />
               </div>
             </CardContent>
           </Card>

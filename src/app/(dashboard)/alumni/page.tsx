@@ -1,5 +1,4 @@
 'use client';
-import { useMemo } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { users } from "@/lib/mock-data";
 import { Building, Linkedin, MessageSquare, Search } from "lucide-react";
+import { useMemo } from "react";
 
 const getInitials = (name: string) => {
     return name.split(' ').map((n) => n[0]).join('');

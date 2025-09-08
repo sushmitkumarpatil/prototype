@@ -57,9 +57,9 @@ export default function LoginPage() {
       footerLinkText="Sign up"
     >
       <form onSubmit={handleSubmit}>
-        <div className="grid gap-4">
-          <div className="grid gap-2">
-            <Label htmlFor="email">Email</Label>
+        <div className="grid gap-6">
+          <div className="grid gap-3">
+            <Label htmlFor="email" className="text-card-foreground font-medium">Email</Label>
             <Input
               id="email"
               type="email"
@@ -68,14 +68,15 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={isLoading}
+              className="border-primary/20 focus:border-primary hover:border-primary/40 transition-colors duration-300"
             />
           </div>
-          <div className="grid gap-2">
-            <div className="flex items-center">
-              <Label htmlFor="password">Password</Label>
+          <div className="grid gap-3">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password" className="text-card-foreground font-medium">Password</Label>
               <Link
                 href="#"
-                className="ml-auto inline-block text-sm underline"
+                className="text-sm text-primary hover:text-primary/80 underline underline-offset-2 hover:underline-offset-4 transition-all duration-300"
               >
                 Forgot your password?
               </Link>
@@ -87,13 +88,18 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               disabled={isLoading}
+              className="border-primary/20 focus:border-primary hover:border-primary/40 transition-colors duration-300"
             />
           </div>
-          <Button type="submit" className="w-full" disabled={isLoading}>
+          <Button 
+            type="submit" 
+            className="w-full bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-primary-foreground shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-300" 
+            disabled={isLoading}
+          >
             {isLoading ? 'Logging in...' : 'Login'}
           </Button>
         </div>
       </form>
     </AuthLayout>
   );
-}   
+}

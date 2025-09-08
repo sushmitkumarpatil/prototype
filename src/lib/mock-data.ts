@@ -11,6 +11,9 @@ export type User = {
   company?: string;
   jobTitle?: string;
   linkedin?: string;
+  phone?: string;
+  website?: string;
+  bio?: string;
   followedAlumni?: number[];
 };
 
@@ -58,6 +61,9 @@ export const users: User[] = [
     company: 'Innovate Corp',
     jobTitle: 'Senior Software Engineer',
     linkedin: 'https://linkedin.com/in/priyasharma',
+    phone: '+91 98765 43211',
+    website: 'https://priyasharma.dev',
+    bio: 'Passionate software engineer with expertise in full-stack development and cloud technologies.',
   },
   {
     id: 2,
@@ -81,6 +87,9 @@ export const users: User[] = [
     course: 'Computer Science',
     batch: 2025,
     usn: '123456789',
+    phone: '+91 98765 43213',
+    website: 'https://anjalisingh.dev',
+    bio: 'Computer Science student passionate about web development and machine learning.',
     followedAlumni: [1, 2],
   },
   {
@@ -95,6 +104,9 @@ export const users: User[] = [
     company: 'Circuitry Inc.',
     jobTitle: 'Hardware Engineer',
     linkedin: 'https://linkedin.com/in/vikrammehta',
+    phone: '+91 98765 43212',
+    website: 'https://vikrammehta.dev',
+    bio: 'Hardware engineer specializing in embedded systems and IoT solutions.',
   },
 ];
 
@@ -144,6 +156,26 @@ export const events: Event[] = [
     image: 'https://placehold.co/600x400',
     rsvpLink: '#',
   },
+  {
+    id: 3,
+    authorId: 2, // Rajesh Kumar (current user)
+    title: 'Project Management Best Practices',
+    date: '2024-12-15T14:00:00Z',
+    location: 'Online',
+    description: 'A comprehensive session on modern project management methodologies, tools, and best practices for successful project delivery.',
+    image: 'https://placehold.co/600x400',
+    rsvpLink: '#',
+  },
+  {
+    id: 4,
+    authorId: 2, // Rajesh Kumar (current user)
+    title: 'Career Transition Workshop',
+    date: '2024-11-20T10:00:00Z',
+    location: 'College Conference Room',
+    description: 'Learn how to successfully transition between different roles and industries. Open to all students and recent graduates.',
+    image: 'https://placehold.co/600x400',
+    rsvpLink: '#',
+  },
 ];
 
 export const posts: Post[] = [
@@ -165,4 +197,9 @@ export const posts: Post[] = [
 export const getAuthor = (authorId: number) => users.find((user) => user.id === authorId);
 
 //export const currentUser: User = users[2]; // Simulating logged-in user as Anjali Singh (student)
- export const currentUser: User = users[1]; // To test as an Alumnus
+ export const currentUser: User = {
+  ...users[1],
+  phone: '+91 98765 43210',
+  website: 'https://rajeshkumar.dev',
+  bio: 'Experienced Project Manager with a passion for delivering innovative solutions and leading cross-functional teams to success.'
+}; // To test as an Alumnus
