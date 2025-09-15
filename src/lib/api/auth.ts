@@ -1,6 +1,5 @@
 import api from '../axios';
 import { LoginResponse } from '../types/auth';
-import { MockApiService } from '../mock-api';
 
 export interface RegistrationData {
   userType: 'student' | 'alumnus';
@@ -20,6 +19,39 @@ export interface RegistrationResponse {
   timestamp: string;
 }
 
+export interface LoginRequest {
+  email: string;
+  password: string;
+  tenant_id: number;
+}
+
+export interface VerifyTokenResponse {
+  success: boolean;
+  valid: boolean;
+  user?: any;
+  message?: string;
+}
+
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export interface ForgotPasswordRequest {
+  email: string;
+  tenant_id: number;
+}
+
+export interface ResetPasswordRequest {
+  password: string;
+  tenant_id: number;
+}
+
+export interface VerifyEmailRequest {
+  tenant_id: number;
+}
+
+// Authentication API functions
 export async function registerUser(data: RegistrationData): Promise<RegistrationResponse> {
   let tenantId = localStorage.getItem('tenant');
   if (!tenantId) {
@@ -34,22 +66,29 @@ export async function registerUser(data: RegistrationData): Promise<Registration
       email: data.email,
       password: data.password,
       mobile_number: data.mobileNumber,
-      course_name: data.course, // Try course_name instead of course
-      batch: data.batch,
+      course_name: data.course,
+      batch_year: parseInt(data.batch),
       usn: data.usn,
-      role: data.userType === 'student' ? 'STUDENT' : 'ALUMNI', // Try uppercase role values
+      role: data.userType === 'student' ? 'STUDENT' : 'ALUMNUS',
       tenant_id: parseInt(tenantId, 10)
     };
 
-    console.log('Sending registration data:', apiData); // Debug log
+    console.log('Sending registration data:', { ...apiData, password: '[HIDDEN]' });
 
-    // Try to use the real API first
-    return await api.post('/api/auth/register', apiData);
-  } catch (error) {
-    console.warn('Real API not available, using mock service:', error);
-    // Fallback to mock service for development
-    const mockService = MockApiService.getInstance();
-    return await mockService.registerUser(data);
+    const response = await api.post('/api/account/register', apiData);
+    return response;
+  } catch (error: any) {
+    console.error('Registration error:', error);
+    
+    // If backend is not available, fallback to mock API
+    if (error.message?.includes('Network error') || error.message?.includes('Failed to connect')) {
+      console.log('Backend not available, using mock API');
+      const { MockApiService } = await import('../mock-api');
+      const mockApi = MockApiService.getInstance();
+      return await mockApi.registerUser(data);
+    }
+    
+    throw error;
   }
 }
 
@@ -60,27 +99,109 @@ export async function loginUser(email: string, password: string): Promise<LoginR
     localStorage.setItem('tenant', tenantId);
   }
 
-  const loginData = { 
+  const loginData: LoginRequest = { 
     email, 
     password, 
     tenant_id: parseInt(tenantId, 10) 
   };
 
-  console.log('Sending login data:', { ...loginData, password: '[HIDDEN]' }); // Debug log
+  console.log('Sending login data:', { ...loginData, password: '[HIDDEN]' });
 
   try {
-    // Try to use the real API first
-    return await api.post('/api/auth/login', loginData);
+    const response = await api.post('/api/auth/login', loginData);
+    return response;
   } catch (error: any) {
-    // Don't fall back to mock service for authentication errors (401, 403)
-    if (error.response && (error.response.status === 401 || error.response.status === 403)) {
-      console.error('Authentication failed:', error.response.data);
-      throw error; // Re-throw authentication errors
-    }
-    
-    // Only fall back to mock service for connection/network errors
-    console.warn('Real API not available, using mock service:', error);
-    const mockService = MockApiService.getInstance();
-    return await mockService.loginUser(email, password);
+    console.error('Login error:', error);
+    throw error;
+  }
+}
+
+export async function logoutUser(): Promise<{ success: boolean; message: string }> {
+  try {
+    const response = await api.post('/api/auth/logout');
+    return response;
+  } catch (error: any) {
+    console.error('Logout error:', error);
+    throw error;
+  }
+}
+
+export async function verifyToken(): Promise<VerifyTokenResponse> {
+  try {
+    const response = await api.post('/api/auth/verify');
+    return response;
+  } catch (error: any) {
+    console.error('Token verification error:', error);
+    throw error;
+  }
+}
+
+export async function getCurrentUser(): Promise<any> {
+  try {
+    const response = await api.get('/api/auth/me');
+    return response;
+  } catch (error: any) {
+    console.error('Get current user error:', error);
+    throw error;
+  }
+}
+
+export async function refreshToken(): Promise<{ accessToken: string; message: string }> {
+  try {
+    const response = await api.post('/api/auth/refresh');
+    return response;
+  } catch (error: any) {
+    console.error('Token refresh error:', error);
+    throw error;
+  }
+}
+
+export async function changePassword(data: ChangePasswordRequest): Promise<{ success: boolean; message: string }> {
+  try {
+    const response = await api.post('/api/auth/change-password', data);
+    return response;
+  } catch (error: any) {
+    console.error('Change password error:', error);
+    throw error;
+  }
+}
+
+export async function forgotPassword(data: ForgotPasswordRequest): Promise<{ success: boolean; message: string }> {
+  try {
+    const response = await api.post('/api/auth/forgot-password', data);
+    return response;
+  } catch (error: any) {
+    console.error('Forgot password error:', error);
+    throw error;
+  }
+}
+
+export async function resetPassword(token: string, data: ResetPasswordRequest): Promise<{ success: boolean; message: string }> {
+  try {
+    const response = await api.post(`/api/auth/reset-password/${token}`, data);
+    return response;
+  } catch (error: any) {
+    console.error('Reset password error:', error);
+    throw error;
+  }
+}
+
+export async function verifyEmail(token: string, data: VerifyEmailRequest): Promise<{ success: boolean; message: string }> {
+  try {
+    const response = await api.post(`/api/auth/verify/${token}`, data);
+    return response;
+  } catch (error: any) {
+    console.error('Email verification error:', error);
+    throw error;
+  }
+}
+
+export async function revokeAllSessions(): Promise<{ success: boolean; message: string }> {
+  try {
+    const response = await api.post('/api/auth/revoke-sessions');
+    return response;
+  } catch (error: any) {
+    console.error('Revoke sessions error:', error);
+    throw error;
   }
 }

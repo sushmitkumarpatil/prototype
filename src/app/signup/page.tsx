@@ -17,6 +17,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import AuthLayout from '@/components/auth-layout';
+import { registerUser } from '@/lib/api/auth';
 
 const formSchema = z.object({
   userType: z.enum(['student', 'alumnus'], {
@@ -54,16 +55,33 @@ export default function SignupPage() {
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
-    toast({
-      title: 'Registration Submitted!',
-      description:
-        "Your account is pending verification. You'll be notified via email upon approval.",
-    });
-    // In a real app, this would redirect to a "pending verification" page
-    // For now, we'll simulate approval and redirect to the dashboard.
-    setTimeout(() => router.push('/dashboard'), 2000);
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    try {
+      const response = await registerUser(values);
+      if (response.success) {
+        toast({
+          title: 'Registration Successful!',
+          description: response.message || "Your account is pending verification. You'll be notified via email upon approval.",
+          variant: 'success',
+        });
+        // Clear form fields
+        form.reset();
+        // Redirect to login page after successful registration
+        setTimeout(() => router.push('/login'), 2000);
+      } else {
+        toast({
+          title: 'Registration Failed',
+          description: response.message || 'An unexpected error occurred.',
+          variant: 'destructive',
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Registration Error',
+        description: error.message || 'An unexpected error occurred.',
+        variant: 'destructive',
+      });
+    }
   }
 
   return (
@@ -140,6 +158,19 @@ export default function SignupPage() {
                 <FormLabel className="text-card-foreground font-medium">Password</FormLabel>
                 <FormControl>
                   <Input type="password" placeholder="********" {...field} className="border-primary/20 focus:border-primary hover:border-primary/40 transition-colors duration-300" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="mobileNumber"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-card-foreground font-medium">Mobile Number</FormLabel>
+                <FormControl>
+                  <Input placeholder="+1 (555) 123-4567" {...field} className="border-primary/20 focus:border-primary hover:border-primary/40 transition-colors duration-300" />
                 </FormControl>
                 <FormMessage />
               </FormItem>

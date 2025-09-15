@@ -1,68 +1,313 @@
 'use client';
 
-import { FeedCard } from '@/components/feed-card';
+import { useEffect, useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useNotifications } from '@/contexts/NotificationContext';
+import ProtectedRoute from '@/components/ProtectedRoute';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
+import { ErrorDisplay } from '@/components/ErrorDisplay';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { currentUser, events, jobs, posts } from '@/lib/mock-data';
-import { useMemo, useState } from 'react';
+import { Badge } from '@/components/ui/badge';
+import { 
+  User, 
+  Bell, 
+  Briefcase, 
+  Calendar, 
+  FileText, 
+  Users, 
+  Settings,
+  LogOut,
+  Plus
+} from 'lucide-react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 export default function DashboardPage() {
-  const [filter, setFilter] = useState('All');
+  const { user, logout, isLoading: authLoading } = useAuth();
+  const { unreadCount, notifications, refreshNotifications } = useNotifications();
+  const [stats, setStats] = useState({
+    totalJobs: 0,
+    totalEvents: 0,
+    totalPosts: 0,
+    totalUsers: 0,
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
-  const feedItems = useMemo(() => {
-    return [
-      ...jobs.map(item => ({ ...item, type: 'job' })),
-      ...events.map(item => ({ ...item, type: 'event' })),
-      ...posts.map(item => ({ ...item, type: 'post' })),
-    ].sort((a, b) => new Date(b.postedAt || b.date).getTime() - new Date(a.postedAt || a.date).getTime());
-  }, []);
+  useEffect(() => {
+    if (user) {
+      loadDashboardData();
+    }
+  }, [user]);
 
-  const filteredItems = useMemo(() => {
-    if (filter === 'All') return feedItems;
-    return feedItems.filter(item => item.type.toLowerCase() === filter.toLowerCase().slice(0, -1));
-  }, [filter, feedItems]);
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // In a real implementation, you would call your API endpoints here
+      // For now, we'll simulate the data
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      setStats({
+        totalJobs: 12,
+        totalEvents: 8,
+        totalPosts: 24,
+        totalUsers: 156,
+      });
+    } catch (err: any) {
+      setError(err.message || 'Failed to load dashboard data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
+
+  if (authLoading) {
+    return <LoadingSpinner size="lg" text="Loading dashboard..." />;
+  }
+
+  if (error) {
+    return (
+      <ErrorDisplay
+        error={error}
+        title="Failed to load dashboard"
+        onRetry={loadDashboardData}
+      />
+    );
+  }
 
   return (
-    <div className="container mx-auto max-w-4xl">
-      <div className="mb-8 p-8 bg-gradient-to-br from-card via-primary/5 to-accent/5 rounded-xl border border-primary/20 shadow-xl">
-        <h1 className="font-headline text-4xl font-bold text-card-foreground mb-3 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">Dashboard</h1>
-        <p className="text-muted-foreground text-lg">Welcome back, <span className="text-primary font-semibold">{currentUser.name}</span>! Here's what's new.</p>
-        <div className="mt-8 flex items-center gap-3">
-            <h3 className="text-sm font-semibold text-card-foreground">Filter feed:</h3>
-            {['All', 'Jobs', 'Events', 'Posts'].map(f => (
-                <Button 
-                  key={f} 
-                  variant={filter === f ? 'default' : 'ghost'} 
-                  size="sm" 
-                  onClick={() => setFilter(f)}
-                  className={filter === f 
-                    ? 'bg-gradient-to-r from-primary to-primary/90 text-primary-foreground hover:from-primary/90 hover:to-primary shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300' 
-                    : 'text-muted-foreground hover:text-card-foreground hover:bg-gradient-to-r hover:from-primary/10 hover:to-accent/10 border border-primary/20 hover:border-primary/40 transition-all duration-300'
-                  }
-                >
-                {f}
+    <ProtectedRoute>
+      <div className="min-h-screen bg-background">
+        {/* Header */}
+        <header className="border-b bg-card">
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <h1 className="text-2xl font-bold">Dashboard</h1>
+                <Badge variant="secondary">
+                  {user?.role}
+                </Badge>
+              </div>
+              <div className="flex items-center space-x-4">
+                <Button variant="ghost" size="sm" asChild>
+                  <Link href="/notifications">
+                    <Bell className="h-4 w-4 mr-2" />
+                    Notifications
+                    {unreadCount > 0 && (
+                      <Badge variant="destructive" className="ml-2">
+                        {unreadCount}
+                      </Badge>
+                    )}
+                  </Link>
                 </Button>
-            ))}
-        </div>
-      </div>
-      
-      <div className="space-y-6">
-        {filteredItems.length > 0 ? (
-          filteredItems.map(item => <FeedCard key={`${item.type}-${item.id}`} item={item} />)
-        ) : (
-          <div className="text-center py-16 bg-gradient-to-br from-card via-primary/5 to-accent/5 rounded-xl border border-primary/20">
-            <div className="text-muted-foreground text-xl mb-2">No {filter.toLowerCase()} found</div>
-            <p className="text-sm text-muted-foreground">Try adjusting your filter or check back later</p>
-            <div className="mt-4">
-              <Button 
-                onClick={() => setFilter('All')} 
-                className="bg-gradient-to-r from-primary to-accent text-primary-foreground hover:from-primary/90 hover:to-accent/90 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
-              >
-                Show All
-              </Button>
+                <Button variant="ghost" size="sm" asChild>
+                  <Link href="/profile">
+                    <User className="h-4 w-4 mr-2" />
+                    Profile
+                  </Link>
+                </Button>
+                <Button variant="ghost" size="sm" onClick={handleLogout}>
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Logout
+                </Button>
+              </div>
             </div>
           </div>
-        )}
+        </header>
+
+        {/* Main Content */}
+        <main className="container mx-auto px-4 py-8">
+          {/* Welcome Section */}
+          <div className="mb-8">
+            <h2 className="text-3xl font-bold mb-2">
+              Welcome back, {user?.full_name}!
+            </h2>
+            <p className="text-muted-foreground">
+              Here's what's happening in your alumni community.
+            </p>
+          </div>
+
+          {/* Stats Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Jobs</CardTitle>
+                <Briefcase className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.totalJobs}</div>
+                <p className="text-xs text-muted-foreground">
+                  Available opportunities
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Upcoming Events</CardTitle>
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.totalEvents}</div>
+                <p className="text-xs text-muted-foreground">
+                  Events this month
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Community Posts</CardTitle>
+                <FileText className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.totalPosts}</div>
+                <p className="text-xs text-muted-foreground">
+                  Recent discussions
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Active Members</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.totalUsers}</div>
+                <p className="text-xs text-muted-foreground">
+                  Community members
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Quick Actions */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            <Card>
+              <CardHeader>
+                <CardTitle>Jobs</CardTitle>
+                <CardDescription>
+                  Find and post job opportunities
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Button className="w-full" asChild>
+                  <Link href="/jobs">
+                    <Briefcase className="h-4 w-4 mr-2" />
+                    Browse Jobs
+                  </Link>
+                </Button>
+                <Button variant="outline" className="w-full" asChild>
+                  <Link href="/jobs/create">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Post a Job
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Events</CardTitle>
+                <CardDescription>
+                  Discover and create events
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Button className="w-full" asChild>
+                  <Link href="/events">
+                    <Calendar className="h-4 w-4 mr-2" />
+                    View Events
+                  </Link>
+                </Button>
+                <Button variant="outline" className="w-full" asChild>
+                  <Link href="/events/create">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Event
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Community</CardTitle>
+                <CardDescription>
+                  Connect with fellow alumni
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Button className="w-full" asChild>
+                  <Link href="/posts">
+                    <FileText className="h-4 w-4 mr-2" />
+                    View Posts
+                  </Link>
+                </Button>
+                <Button variant="outline" className="w-full" asChild>
+                  <Link href="/posts/create">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Post
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Recent Activity */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent Activity</CardTitle>
+              <CardDescription>
+                Latest updates from your community
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <LoadingSpinner text="Loading recent activity..." />
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-4 p-4 border rounded-lg">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">New job posted</p>
+                      <p className="text-xs text-muted-foreground">Software Engineer at Tech Corp</p>
+                    </div>
+                    <span className="text-xs text-muted-foreground">2 hours ago</span>
+                  </div>
+                  <div className="flex items-center space-x-4 p-4 border rounded-lg">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">Event created</p>
+                      <p className="text-xs text-muted-foreground">Alumni Networking Meetup</p>
+                    </div>
+                    <span className="text-xs text-muted-foreground">4 hours ago</span>
+                  </div>
+                  <div className="flex items-center space-x-4 p-4 border rounded-lg">
+                    <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">New member joined</p>
+                      <p className="text-xs text-muted-foreground">John Doe from Class of 2023</p>
+                    </div>
+                    <span className="text-xs text-muted-foreground">6 hours ago</span>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </main>
       </div>
-    </div>
+    </ProtectedRoute>
   );
 }

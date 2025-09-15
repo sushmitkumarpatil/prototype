@@ -183,6 +183,19 @@ export function DashboardLayoutClient({
                   </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={pathname.startsWith('/posts')}
+                tooltip={{ children: 'Posts' }}
+                className="text-sidebar-foreground hover:bg-gradient-to-r hover:from-sidebar-accent/20 hover:to-sidebar-primary/20 hover:text-sidebar-accent-foreground data-[active=true]:bg-gradient-to-r data-[active=true]:from-sidebar-primary data-[active=true]:to-sidebar-primary/90 data-[active=true]:text-sidebar-primary-foreground data-[active=true]:shadow-lg"
+              >
+                                  <Link href="/posts">
+                    <FileText />
+                    <span className="transition-all duration-300 ease-out group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:translate-x-2">Posts</span>
+                  </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
              <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
@@ -193,6 +206,19 @@ export function DashboardLayoutClient({
                                   <Link href="/messages">
                     <MessageSquare />
                     <span className="transition-all duration-300 ease-out group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:translate-x-2">Messages</span>
+                  </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={pathname === '/history'}
+                tooltip={{ children: 'History' }}
+                className="text-sidebar-foreground hover:bg-gradient-to-r hover:from-sidebar-accent/20 hover:to-sidebar-primary/20 hover:text-sidebar-accent-foreground data-[active=true]:bg-gradient-to-r data-[active=true]:from-sidebar-primary data-[active=true]:to-sidebar-primary/90 data-[active=true]:text-sidebar-primary-foreground data-[active=true]:shadow-lg"
+              >
+                                  <Link href="/history">
+                    <Edit />
+                    <span className="transition-all duration-300 ease-out group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:translate-x-2">History</span>
                   </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

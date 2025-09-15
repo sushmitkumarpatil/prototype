@@ -5,46 +5,34 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import Link from '@/components/ui/link';
 import AuthLayout from '@/components/auth-layout';
-import { useRouter } from 'next/navigation';
-import React, { useState } from 'react';
-import { useToast } from '@/hooks/use-toast';
-import { loginUser } from '@/lib/api/auth';
-import { saveAuthData } from '@/lib/auth';
+import { useRouter, useSearchParams } from 'next/navigation';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { toast } = useToast();
+  const searchParams = useSearchParams();
+  const { login, isLoading, isAuthenticated } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+
+  // Get redirect URL from query params
+  const redirectTo = searchParams.get('redirect') || '/dashboard';
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.push(redirectTo);
+    }
+  }, [isAuthenticated, router, redirectTo]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
     try {
-      const response = await loginUser(email, password);
-      if (response.success) {
-        saveAuthData(response);
-        toast({
-          title: 'Login Successful',
-          description: 'Redirecting to your dashboard...',
-        });
-        router.push('/dashboard');
-      } else {
-        toast({
-          title: 'Login Failed',
-          description: response.message || 'An unexpected error occurred.',
-          variant: 'destructive',
-        });
-      }
-    } catch (error: any) {
-      toast({
-        title: 'Login Error',
-        description: error.message || 'An unexpected error occurred.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsLoading(false);
+      await login(email, password, redirectTo);
+    } catch (error) {
+      // Error handling is done in the AuthContext
+      console.error('Login failed:', error);
     }
   };
 
