@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import ProtectedRoute from '@/components/ProtectedRoute';
+//
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { ErrorDisplay } from '@/components/ErrorDisplay';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -167,7 +167,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <ProtectedRoute>
+    <>
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-8">
           <div className="max-w-4xl mx-auto">
@@ -464,6 +464,6 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
-    </ProtectedRoute>
+    </>
   );
 }

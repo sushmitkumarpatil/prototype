@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { useToast } from '@/hooks/use-toast';
 import { createPost, createJob, createEvent } from '@/lib/api/content';
 
-export const NewPostDialog = ({ children }: { children: React.ReactNode }) => {
+export const NewPostDialog = ({ children, onCreated }: { children: React.ReactNode; onCreated?: (post: any) => void }) => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -47,23 +47,31 @@ export const NewPostDialog = ({ children }: { children: React.ReactNode }) => {
       });
 
       if (response.success) {
+        const status = response.post?.approval_status;
+        const pending = status === 'PENDING' || /pending/i.test(response.message || '');
         toast({
-          title: 'Success',
-          description: 'Post created successfully!',
+          title: pending ? 'Submitted for Approval' : 'Success',
+          description: pending
+            ? 'Your post was created and is pending admin approval. It will appear once approved.'
+            : 'Post created and published.',
           variant: 'success',
         });
+        onCreated?.(response.post);
         setFormData({ title: '', content: '' });
         setOpen(false);
-        // Refresh the page to show the new post
-        window.location.reload();
       } else {
         throw new Error(response.message || 'Failed to create post');
       }
     } catch (error: any) {
       console.error('Create post error:', error);
-      
-      // Don't show error toast for authentication errors - let the auth system handle it
-      if (!error.message?.includes('Session expired') && !error.message?.includes('401')) {
+      const msg = String(error.message || '').toLowerCase();
+      if (msg.includes('pending') && msg.includes('approval')) {
+        toast({
+          title: 'Account Pending Approval',
+          description: 'Your account must be approved before you can create content. Please wait for admin approval or contact support.',
+          variant: 'destructive',
+        });
+      } else if (!msg.includes('session expired') && !msg.includes('401')) {
         toast({
           title: 'Error',
           description: error.message || 'Failed to create post',
@@ -129,7 +137,7 @@ export const NewPostDialog = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
-export const NewJobDialog = ({ children }: { children: React.ReactNode }) => {
+export const NewJobDialog = ({ children, onCreated }: { children: React.ReactNode; onCreated?: (job: any) => void }) => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -163,16 +171,20 @@ export const NewJobDialog = ({ children }: { children: React.ReactNode }) => {
         location: formData.location.trim() || undefined,
         description: formData.description.trim(),
         apply_link_or_email: 'contact@company.com', // Default contact
-        job_type: formData.jobType ? formData.jobType.toUpperCase() as 'FULL_TIME' | 'PART_TIME' | 'INTERNSHIP' | 'CONTRACT' : 'FULL_TIME',
+        job_type: formData.jobType ? formData.jobType.toUpperCase().replace('-', '_') as 'FULL_TIME' | 'PART_TIME' | 'INTERNSHIP' | 'CONTRACT' : 'FULL_TIME',
         work_mode: 'Remote' as 'Remote' | 'Hybrid' | 'Onsite',
         experience_level: formData.requirements.trim() || undefined,
         is_public: true,
       });
 
       if (response.success) {
+        const status = response.job?.approval_status;
+        const pending = status === 'PENDING' || /pending/i.test(response.message || '');
         toast({
-          title: 'Success',
-          description: 'Job posted successfully!',
+          title: pending ? 'Submitted for Approval' : 'Success',
+          description: pending
+            ? 'Your job was posted and is pending admin approval. It will appear once approved.'
+            : 'Job posted and published.',
           variant: 'success',
         });
         setFormData({
@@ -184,17 +196,21 @@ export const NewJobDialog = ({ children }: { children: React.ReactNode }) => {
           salary: '',
           requirements: '',
         });
+        onCreated?.(response.job);
         setOpen(false);
-        // Refresh the page to show the new job
-        window.location.reload();
       } else {
         throw new Error(response.message || 'Failed to post job');
       }
     } catch (error: any) {
       console.error('Create job error:', error);
-      
-      // Don't show error toast for authentication errors - let the auth system handle it
-      if (!error.message?.includes('Session expired') && !error.message?.includes('401')) {
+      const msg = String(error.message || '').toLowerCase();
+      if (msg.includes('pending') && msg.includes('approval')) {
+        toast({
+          title: 'Account Pending Approval',
+          description: 'Your account must be approved before you can post jobs. Please wait for admin approval or contact support.',
+          variant: 'destructive',
+        });
+      } else if (!msg.includes('session expired') && !msg.includes('401')) {
         toast({
           title: 'Error',
           description: error.message || 'Failed to post job',
@@ -329,7 +345,7 @@ export const NewJobDialog = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
-export const NewEventDialog = ({ children }: { children: React.ReactNode }) => {
+export const NewEventDialog = ({ children, onCreated }: { children: React.ReactNode; onCreated?: (event: any) => void }) => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -372,9 +388,13 @@ export const NewEventDialog = ({ children }: { children: React.ReactNode }) => {
       });
 
       if (response.success) {
+        const status = response.data?.event?.approval_status;
+        const pending = status === 'PENDING' || /pending/i.test(response.message || '');
         toast({
-          title: 'Success',
-          description: 'Event announced successfully!',
+          title: pending ? 'Submitted for Approval' : 'Success',
+          description: pending
+            ? 'Your event was created and is pending admin approval. It will appear once approved.'
+            : 'Event announced and published.',
           variant: 'success',
         });
         setFormData({
@@ -386,17 +406,21 @@ export const NewEventDialog = ({ children }: { children: React.ReactNode }) => {
           endTime: '',
           maxAttendees: '',
         });
+        onCreated?.(response.data?.event);
         setOpen(false);
-        // Refresh the page to show the new event
-        window.location.reload();
       } else {
         throw new Error(response.message || 'Failed to announce event');
       }
     } catch (error: any) {
       console.error('Create event error:', error);
-      
-      // Don't show error toast for authentication errors - let the auth system handle it
-      if (!error.message?.includes('Session expired') && !error.message?.includes('401')) {
+      const msg = String(error.message || '').toLowerCase();
+      if (msg.includes('pending') && msg.includes('approval')) {
+        toast({
+          title: 'Account Pending Approval',
+          description: 'Your account must be approved before you can announce events. Please wait for admin approval or contact support.',
+          variant: 'destructive',
+        });
+      } else if (!msg.includes('session expired') && !msg.includes('401')) {
         toast({
           title: 'Error',
           description: error.message || 'Failed to announce event',

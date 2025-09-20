@@ -1,17 +1,36 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import { 
-  loginUser, 
-  logoutUser, 
-  verifyToken, 
+import {
   getCurrentUser,
-  LoginResponse,
-  User 
+  loginUser,
+  logoutUser,
+  verifyToken
 } from '@/lib/api/auth';
-import { getAuthToken, getUserData, saveAuthData, removeAuthData } from '@/lib/auth';
+import { getAuthToken, getUserData, removeAuthData, saveAuthData } from '@/lib/auth';
+import { classifyAuthError, getRefreshState } from '@/lib/axios';
+import type { LoginResponse, User } from '@/lib/types/auth';
+import { useRouter } from 'next/navigation';
+import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
+  // Helper to wait for in-flight refresh to finish
+  async function waitForRefreshIfInFlight() {
+    const { isRefreshing, pendingRequestsQueueLength } = getRefreshState();
+    if (isRefreshing) {
+      if (process.env.NEXT_PUBLIC_DEBUG_AUTH === 'true') {
+        // eslint-disable-next-line no-console
+        console.log('[AuthContext] Waiting for in-flight token refresh to complete...');
+      }
+      // Wait for all pending requests to resolve
+      await new Promise((resolve) => {
+        const check = () => {
+          const { isRefreshing: stillRefreshing, pendingRequestsQueueLength: qlen } = getRefreshState();
+          if (!stillRefreshing && qlen === 0) resolve(null);
+          else setTimeout(check, 50);
+        };
+        check();
+      });
+    }
+  }
 
 interface AuthContextType {
   user: User | null;
@@ -42,7 +61,47 @@ export function AuthProvider({ children }: AuthProviderProps) {
     checkAuth();
   }, []);
 
+  // Enhanced error classification for auth
+  function classifyError(error: any) {
+    if (!error) return { type: 'unknown', recoverable: false };
+    if (error.isAxiosError || error.response || error.code) {
+      const { status, code, isNetworkError, isTimeout, isServerError, normalizedCode, recoverable } = classifyAuthError(error);
+      if (isNetworkError) return { type: 'network', recoverable: true };
+      if (isTimeout) return { type: 'timeout', recoverable: true };
+      if (isServerError) return { type: 'server', recoverable: true };
+      if (normalizedCode === 'INVALID_TOKEN' || [401, 403].includes(status)) return { type: 'auth', recoverable: false };
+      return { type: 'other', recoverable: recoverable ?? false };
+    }
+    if (error.message?.toLowerCase().includes('network error')) {
+      return { type: 'network', recoverable: true };
+    }
+    return { type: 'unknown', recoverable: false };
+  }
+
+  // Exponential backoff helper
+  async function retryWithBackoff(fn: () => Promise<any>, maxAttempts = 3, baseDelay = 500) {
+    let attempt = 0;
+    let lastError;
+    while (attempt < maxAttempts) {
+      try {
+        return await fn();
+      } catch (err) {
+        lastError = err;
+        const { type, recoverable } = classifyError(err);
+        if (!recoverable) throw err;
+        attempt++;
+        if (process.env.NEXT_PUBLIC_DEBUG_AUTH === 'true') {
+          // eslint-disable-next-line no-console
+          console.warn(`[AuthContext] Retry attempt ${attempt} after error:`, err);
+        }
+        await new Promise((res) => setTimeout(res, baseDelay * Math.pow(2, attempt - 1)));
+      }
+    }
+    throw lastError;
+  }
+
   const checkAuth = async () => {
+    await waitForRefreshIfInFlight();
     try {
       const token = getAuthToken();
       if (!token) {
@@ -55,52 +114,69 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (cachedUser) {
         setUser(cachedUser);
         setIsLoading(false);
-        
+
         // Verify token in background without blocking UI
         try {
-          const response = await verifyToken();
-          if (response.valid && response.user) {
-            // Update user data if verification succeeds
-            setUser(response.user);
-          } else {
-            // Token is invalid, clear auth data
-            removeAuthData();
-            setUser(null);
-          }
+          await retryWithBackoff(async () => {
+            // Guard: if refresh is in-flight, do not clear session on failure
+            await waitForRefreshIfInFlight();
+            const response = await verifyToken();
+            if (response.valid && response.user) {
+              setUser(response.user);
+            } else {
+              // Only clear session if not in-flight refresh
+              const { isRefreshing } = getRefreshState();
+              if (!isRefreshing) {
+                removeAuthData();
+                setUser(null);
+              }
+            }
+          });
         } catch (verifyError: any) {
-          console.warn('Background token verification failed:', verifyError);
-          // Only clear auth data if it's a clear authentication error
-          if (verifyError.message?.includes('401') || verifyError.message?.includes('Invalid token')) {
+          const { type, recoverable } = classifyError(verifyError);
+          if (process.env.NEXT_PUBLIC_DEBUG_AUTH === 'true') {
+            // eslint-disable-next-line no-console
+            console.warn('[AuthContext] Background token verification failed:', verifyError, type, recoverable);
+          }
+          // Only clear session if not in-flight refresh
+          const { isRefreshing } = getRefreshState();
+          if (!recoverable && !isRefreshing) {
             removeAuthData();
             setUser(null);
           }
-          // For network errors, keep cached data and let axios interceptor handle it
+          // For network/server errors, keep cached data and let axios handle it
         }
         return;
       }
 
       // If no cached user data, verify token with backend
-      const response = await verifyToken();
-      if (response.valid && response.user) {
-        setUser(response.user);
-      } else {
-        // Token is invalid, clear auth data
-        removeAuthData();
-        setUser(null);
-      }
-    } catch (error: any) {
-      console.error('Auth check failed:', error);
-      // Only clear auth data if it's a critical error, not network issues
-      if (error.message?.includes('Network error') || error.message?.includes('timeout')) {
-        // Keep cached user data for network issues
-        const cachedUser = getUserData();
-        if (cachedUser) {
-          setUser(cachedUser);
+      await retryWithBackoff(async () => {
+        await waitForRefreshIfInFlight();
+        const response = await verifyToken();
+        if (response.valid && response.user) {
+          setUser(response.user);
+        } else {
+          const { isRefreshing } = getRefreshState();
+          if (!isRefreshing) {
+            removeAuthData();
+            setUser(null);
+          }
         }
-      } else {
-        // Clear auth data for other errors
+      });
+    } catch (error: any) {
+      const { type, recoverable } = classifyError(error);
+      if (process.env.NEXT_PUBLIC_DEBUG_AUTH === 'true') {
+        // eslint-disable-next-line no-console
+        console.error('[AuthContext] Auth check failed:', error, type, recoverable);
+      }
+      const { isRefreshing } = getRefreshState();
+      if (!recoverable && !isRefreshing) {
         removeAuthData();
         setUser(null);
+      } else {
+        // For network/server errors, keep cached user data
+        const cachedUser = getUserData();
+        if (cachedUser) setUser(cachedUser);
       }
     } finally {
       setIsLoading(false);
@@ -113,12 +189,26 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const response: LoginResponse = await loginUser(email, password);
       
       if (response.success) {
+        // Check if this is a returning user
+        const existingUserData = getUserData();
+        const isReturningUser = existingUserData && existingUserData.email === email;
+        
+        // Save auth data with returning user flag
         saveAuthData(response);
+        
+        // Store welcome message state in localStorage
+        if (isReturningUser) {
+          localStorage.setItem('welcomeMessage', 'back');
+        } else {
+          localStorage.setItem('welcomeMessage', 'first');
+        }
+        
         setUser(response.user);
         
         toast({
           title: 'Login Successful',
-          description: 'Welcome back!',
+          description: 'Sign-in successful',
+          variant: 'success',
         });
         
         // Redirect to specified URL or dashboard
@@ -174,20 +264,42 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   const refreshUser = async () => {
-    try {
-      const response = await getCurrentUser();
-      if (response.success && response.user) {
-        setUser(response.user);
-      }
-    } catch (error: any) {
-      console.error('Refresh user error:', error);
-      // If refresh fails, user might need to login again
-      if (error.message?.includes('401') || error.message?.includes('unauthorized')) {
-        removeAuthData();
-        setUser(null);
-        router.push('/login');
+    await waitForRefreshIfInFlight();
+    let attempts = 0;
+    const maxAttempts = 3;
+    const baseDelay = 500;
+    while (attempts < maxAttempts) {
+      try {
+        await waitForRefreshIfInFlight();
+        const response = await getCurrentUser();
+        if (response.success && response.user) {
+          setUser(response.user);
+          return;
+        }
+        throw new Error('User not found');
+      } catch (error: any) {
+        const { type, recoverable } = classifyError(error);
+        if (process.env.NEXT_PUBLIC_DEBUG_AUTH === 'true') {
+          // eslint-disable-next-line no-console
+          console.error('[AuthContext] Refresh user error:', error, type, recoverable);
+        }
+        const { isRefreshing } = getRefreshState();
+        if (!recoverable && !isRefreshing) {
+          removeAuthData();
+          setUser(null);
+          router.push('/login');
+          return;
+        }
+        attempts++;
+        await new Promise((res) => setTimeout(res, baseDelay * Math.pow(2, attempts - 1)));
       }
     }
+    // If all retries fail, show a toast but do not clear session immediately
+    toast({
+      title: 'Network Issue',
+      description: 'Unable to refresh user info. Please check your connection.',
+      variant: 'warning',
+    });
   };
 
   const value: AuthContextType = {

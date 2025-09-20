@@ -61,8 +61,8 @@ export default function SignupPage() {
       if (response.success) {
         toast({
           title: 'Registration Successful!',
-          description: response.message || "Your account is pending verification. You'll be notified via email upon approval.",
-          variant: 'success',
+          description: 'Your registration is successful and pending approval by the admin.',
+          variant: 'warning',
         });
         // Clear form fields
         form.reset();

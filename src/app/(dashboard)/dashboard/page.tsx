@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/contexts/NotificationContext';
-import ProtectedRoute from '@/components/ProtectedRoute';
+//
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { ErrorDisplay } from '@/components/ErrorDisplay';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,6 +22,35 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { getPosts, getJobs, getEvents } from '@/lib/api/content';
+
+// Helper function to get welcome message
+function getWelcomeMessage(user: any) {
+  if (!user) return 'Welcome!';
+  
+  // Get first name from email or full name
+  const getFirstName = (user: any) => {
+    if (user.full_name) {
+      return user.full_name.split(' ')[0];
+    }
+    // Extract first name from email (before @)
+    if (user.email) {
+      const emailPart = user.email.split('@')[0];
+      // Capitalize first letter
+      return emailPart.charAt(0).toUpperCase() + emailPart.slice(1);
+    }
+    return 'User';
+  };
+  
+  const firstName = getFirstName(user);
+  const welcomeType = localStorage.getItem('welcomeMessage');
+  
+  if (welcomeType === 'back') {
+    return `Welcome back, ${firstName}!`;
+  } else {
+    return `Welcome, ${firstName}!`;
+  }
+}
 
 export default function DashboardPage() {
   const { user, logout, isLoading: authLoading } = useAuth();
@@ -47,17 +76,21 @@ export default function DashboardPage() {
       setLoading(true);
       setError(null);
       
-      // In a real implementation, you would call your API endpoints here
-      // For now, we'll simulate the data
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Fetch counts from APIs (pagination.total reflects visibility and tenant filters)
+      const [postsRes, jobsRes, eventsRes] = await Promise.allSettled([
+        getPosts(1, 1),
+        getJobs(1, 1),
+        getEvents(1, 1),
+      ]);
       
-      setStats({
-        totalJobs: 12,
-        totalEvents: 8,
-        totalPosts: 24,
-        totalUsers: 156,
-      });
+      setStats((prev) => ({
+        ...prev,
+        totalPosts: postsRes.status === 'fulfilled' ? postsRes.value?.pagination?.total || 0 : 0,
+        totalJobs: jobsRes.status === 'fulfilled' ? jobsRes.value?.pagination?.total || 0 : 0,
+        totalEvents: eventsRes.status === 'fulfilled' ? eventsRes.value?.pagination?.total || 0 : 0,
+      }));
     } catch (err: any) {
+      console.error('Dashboard data loading error:', err);
       setError(err.message || 'Failed to load dashboard data');
     } finally {
       setLoading(false);
@@ -87,7 +120,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <ProtectedRoute>
+    <>
       <div className="min-h-screen bg-background">
         {/* Header */}
         <header className="border-b bg-card">
@@ -131,7 +164,7 @@ export default function DashboardPage() {
           {/* Welcome Section */}
           <div className="mb-8">
             <h2 className="text-3xl font-bold mb-2">
-              Welcome back, {user?.full_name}!
+              {getWelcomeMessage(user)}
             </h2>
             <p className="text-muted-foreground">
               Here's what's happening in your alumni community.
@@ -308,6 +341,6 @@ export default function DashboardPage() {
           </Card>
         </main>
       </div>
-    </ProtectedRoute>
+    </>
   );
 }

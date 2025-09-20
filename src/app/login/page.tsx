@@ -19,9 +19,9 @@ export default function LoginPage() {
   // Get redirect URL from query params
   const redirectTo = searchParams.get('redirect') || '/dashboard';
 
-  // Redirect if already authenticated
+  // Redirect if already authenticated, but only if on /login to avoid double navigation
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && typeof window !== 'undefined' && window.location.pathname === '/login') {
       router.push(redirectTo);
     }
   }, [isAuthenticated, router, redirectTo]);

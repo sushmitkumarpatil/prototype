@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import ProtectedRoute from '@/components/ProtectedRoute';
+//
 import { getJobs, getEvents, getPosts, deleteJob, deleteEvent, deletePost } from '@/lib/api/content';
 
 interface UserSubmission {
@@ -214,7 +214,7 @@ export default function HistoryPage() {
 
   if (loading) {
     return (
-      <ProtectedRoute>
+      <>
         <div className="container mx-auto p-6">
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
@@ -223,12 +223,12 @@ export default function HistoryPage() {
             </div>
           </div>
         </div>
-      </ProtectedRoute>
+      </>
     );
   }
 
   return (
-    <ProtectedRoute>
+    <>
       <div className="container mx-auto p-6">
         {/* Header */}
         <div className="mb-6">
@@ -340,6 +340,6 @@ export default function HistoryPage() {
           </TabsContent>
         </Tabs>
       </div>
-    </ProtectedRoute>
+    </>
   );
 }

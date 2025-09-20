@@ -110,73 +110,11 @@ export const users: User[] = [
   },
 ];
 
-export const jobs: Job[] = [
-  {
-    id: 1,
-    authorId: 1,
-    title: 'Frontend Developer (React)',
-    company: 'Innovate Corp',
-    location: 'Remote',
-    description: 'Looking for a skilled React developer to join our dynamic team. Experience with Next.js and TypeScript is a plus.',
-    type: 'Full-time',
-    experienceLevel: 'Mid-Level',
-    postedAt: '2 days ago',
-  },
-  {
-    id: 2,
-    authorId: 2,
-    title: 'Mechanical Design Intern',
-    company: 'BuildIt Solutions',
-    location: 'Mumbai',
-    description: 'Exciting internship opportunity for final year Mechanical Engineering students to work on real-world projects.',
-    type: 'Internship',
-    experienceLevel: 'Internship',
-    postedAt: '1 week ago',
-  },
-];
+// Jobs are now fetched from the backend API - see /lib/api/content.ts
+export const jobs: Job[] = [];
 
-export const events: Event[] = [
-  {
-    id: 1,
-    authorId: 1,
-    title: 'Alumni Networking Meetup',
-    date: '2024-08-15T18:00:00Z',
-    location: 'Online',
-    description: 'A virtual meetup for all alumni to connect, network, and share experiences. Special focus on career growth in tech.',
-    image: 'https://placehold.co/600x400',
-    rsvpLink: '#',
-  },
-  {
-    id: 2,
-    authorId: 4,
-    title: 'Workshop on Embedded Systems',
-    date: '2024-08-20T10:00:00Z',
-    location: 'College Auditorium',
-    description: 'A hands-on workshop covering the fundamentals of embedded systems and IoT. Open to all students.',
-    image: 'https://placehold.co/600x400',
-    rsvpLink: '#',
-  },
-  {
-    id: 3,
-    authorId: 2, // Rajesh Kumar (current user)
-    title: 'Project Management Best Practices',
-    date: '2024-12-15T14:00:00Z',
-    location: 'Online',
-    description: 'A comprehensive session on modern project management methodologies, tools, and best practices for successful project delivery.',
-    image: 'https://placehold.co/600x400',
-    rsvpLink: '#',
-  },
-  {
-    id: 4,
-    authorId: 2, // Rajesh Kumar (current user)
-    title: 'Career Transition Workshop',
-    date: '2024-11-20T10:00:00Z',
-    location: 'College Conference Room',
-    description: 'Learn how to successfully transition between different roles and industries. Open to all students and recent graduates.',
-    image: 'https://placehold.co/600x400',
-    rsvpLink: '#',
-  },
-];
+// Events are now fetched from the backend API - see /lib/api/content.ts
+export const events: Event[] = [];
 
 export const posts: Post[] = [
   {

@@ -99,6 +99,9 @@ export interface Post {
   title?: string;
   content: string;
   is_public: boolean;
+  approval_status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  approved_by?: number;
+  approved_at?: string;
   created_at: string;
   updated_at: string;
   author: {
@@ -139,12 +142,14 @@ export async function getJobs(page: number = 1, limit: number = 10, filters?: {
   search?: string;
 }): Promise<{
   success: boolean;
-  jobs: Job[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
+  data: {
+    jobs: Job[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+    };
   };
 }> {
   try {
@@ -198,9 +203,9 @@ export async function deleteJob(jobId: number): Promise<{ success: boolean; mess
 }
 
 // Event API functions
-export async function createEvent(data: CreateEventRequest): Promise<{ success: boolean; message: string; event: Event }> {
+export async function createEvent(data: CreateEventRequest): Promise<{ success: boolean; message: string; data: { event: Event; meta?: any } }> {
   try {
-    const response = await api.post('/api/event', data);
+    const response = await api.post('/api/events', data);
     return response;
   } catch (error: any) {
     console.error('Create event error:', error);
@@ -235,7 +240,7 @@ export async function getEvents(page: number = 1, limit: number = 10, filters?: 
       });
     }
 
-    const response = await api.get(`/api/event?${params.toString()}`);
+    const response = await api.get(`/api/events?${params.toString()}`);
     return response;
   } catch (error: any) {
     console.error('Get events error:', error);
@@ -243,9 +248,9 @@ export async function getEvents(page: number = 1, limit: number = 10, filters?: 
   }
 }
 
-export async function getEventById(eventId: number): Promise<{ success: boolean; event: Event }> {
+export async function getEventById(eventId: number): Promise<{ success: boolean; data: { event: Event; meta?: any } }> {
   try {
-    const response = await api.get(`/api/event/${eventId}`);
+    const response = await api.get(`/api/events/${eventId}`);
     return response;
   } catch (error: any) {
     console.error('Get event by ID error:', error);
@@ -255,7 +260,7 @@ export async function getEventById(eventId: number): Promise<{ success: boolean;
 
 export async function updateEvent(eventId: number, data: Partial<CreateEventRequest>): Promise<{ success: boolean; message: string; event: Event }> {
   try {
-    const response = await api.put(`/api/event/${eventId}`, data);
+    const response = await api.put(`/api/events/${eventId}`, data);
     return response;
   } catch (error: any) {
     console.error('Update event error:', error);
@@ -265,7 +270,7 @@ export async function updateEvent(eventId: number, data: Partial<CreateEventRequ
 
 export async function deleteEvent(eventId: number): Promise<{ success: boolean; message: string }> {
   try {
-    const response = await api.delete(`/api/event/${eventId}`);
+    const response = await api.delete(`/api/events/${eventId}`);
     return response;
   } catch (error: any) {
     console.error('Delete event error:', error);
@@ -276,7 +281,7 @@ export async function deleteEvent(eventId: number): Promise<{ success: boolean; 
 // RSVP functions
 export async function rsvpToEvent(eventId: number, status: 'INTERESTED' | 'GOING' | 'NOT_GOING'): Promise<{ success: boolean; message: string }> {
   try {
-    const response = await api.post(`/api/event/${eventId}/rsvp`, { status });
+    const response = await api.post(`/api/events/${eventId}/rsvp`, { status });
     return response;
   } catch (error: any) {
     console.error('RSVP to event error:', error);

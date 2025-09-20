@@ -1,15 +1,17 @@
 'use client';
+import { useState, useEffect } from 'react';
 import AnimatedSection from "@/components/animated-section";
 import { PublicFooter } from "@/components/public-footer";
 import { PublicHeader } from "@/components/public-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { events, jobs, users } from "@/lib/mock-data";
+import { users } from "@/lib/mock-data";
+import { getJobs, getEvents, Job, Event } from "@/lib/api/content";
 import { motion } from "framer-motion";
 import { ArrowRight, Briefcase, Calendar, MapPin, Users } from "lucide-react";
 import Link from "next/link";
 
-const JobCard = ({ job }: { job: (typeof jobs)[0] }) => {
+const JobCard = ({ job }: { job: Job }) => {
   return (
     <Card className="flex flex-col border-border hover:border-primary/50 transition-all duration-300 hover:shadow-xl bg-card group">
       <CardHeader>
@@ -19,7 +21,7 @@ const JobCard = ({ job }: { job: (typeof jobs)[0] }) => {
             </div>
             <div>
                 <CardTitle className="font-headline text-lg text-card-foreground group-hover:text-primary transition-colors duration-300">{job.title}</CardTitle>
-                <CardDescription className="text-muted-foreground">{job.company}</CardDescription>
+                <CardDescription className="text-muted-foreground">{job.company_name}</CardDescription>
             </div>
         </div>
       </CardHeader>
@@ -28,7 +30,9 @@ const JobCard = ({ job }: { job: (typeof jobs)[0] }) => {
           <div className="flex items-center gap-1.5">
             <MapPin className="h-4 w-4 text-primary/70" /> {job.location}
           </div>
-          <div className="rounded-md bg-gradient-to-r from-primary/10 to-accent/10 px-2 py-1 text-xs font-medium text-primary border border-primary/20">{job.type}</div>
+          <div className="rounded-md bg-gradient-to-r from-primary/10 to-accent/10 px-2 py-1 text-xs font-medium text-primary border border-primary/20">
+            {job.job_type ? job.job_type.replace('_', ' ') : job.work_mode}
+          </div>
         </div>
       </CardContent>
       <CardFooter>
@@ -40,14 +44,20 @@ const JobCard = ({ job }: { job: (typeof jobs)[0] }) => {
   )
 }
 
-const EventCard = ({ event }: { event: (typeof events)[0] }) => {
+const EventCard = ({ event }: { event: Event }) => {
   return (
     <Card className="overflow-hidden border-border hover:border-primary/50 transition-all duration-300 hover:shadow-xl bg-card group">
       <CardHeader className="p-0">
-        <img src={event.image} alt={event.title} data-ai-hint="event poster" className="aspect-video w-full object-cover group-hover:scale-105 transition-transform duration-300" />
+        {event.image_url ? (
+          <img src={event.image_url} alt={event.title} className="aspect-video w-full object-cover group-hover:scale-105 transition-transform duration-300" />
+        ) : (
+          <div className="aspect-video w-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
+            <Calendar className="h-12 w-12 text-primary/60" />
+          </div>
+        )}
       </CardHeader>
       <CardContent className="p-4">
-        <p className="text-sm font-semibold text-accent">{new Date(event.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
+        <p className="text-sm font-semibold text-accent">{new Date(event.start_time).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
         <h3 className="font-headline text-lg font-bold text-card-foreground group-hover:text-primary transition-colors duration-300">{event.title}</h3>
         <p className="text-sm text-muted-foreground line-clamp-2">{event.description}</p>
       </CardContent>
@@ -65,9 +75,39 @@ const EventCard = ({ event }: { event: (typeof events)[0] }) => {
 
 
 export default function LandingPage() {
+    const [jobs, setJobs] = useState<Job[]>([]);
+    const [events, setEvents] = useState<Event[]>([]);
+    const [loading, setLoading] = useState(true);
+    
     const featuredJobs = jobs.slice(0, 3);
     const upcomingEvents = events.slice(0, 3);
     const alumniCount = users.filter(u => u.role === 'alumnus').length;
+
+    useEffect(() => {
+        const loadData = async () => {
+            try {
+                // Load jobs and events without authentication for public display
+                const [jobsResponse, eventsResponse] = await Promise.allSettled([
+                    getJobs(1, 6).catch(() => ({ success: false, jobs: [] })),
+                    getEvents(1, 6).catch(() => ({ success: false, events: [] }))
+                ]);
+
+                if (jobsResponse.status === 'fulfilled' && jobsResponse.value.success) {
+                    setJobs(jobsResponse.value.jobs || []);
+                }
+
+                if (eventsResponse.status === 'fulfilled' && eventsResponse.value.success) {
+                    setEvents(eventsResponse.value.events || []);
+                }
+            } catch (error) {
+                console.error('Error loading landing page data:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadData();
+    }, []);
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -136,14 +176,14 @@ export default function LandingPage() {
                         <div className="mx-auto h-12 w-12 bg-gradient-to-br from-primary/20 to-accent/20 rounded-lg flex items-center justify-center group-hover:from-primary/30 group-hover:to-accent/30 transition-all duration-300">
                           <Briefcase className="h-6 w-6 text-primary" />
                         </div>
-                        <h3 className="mt-2 text-3xl font-bold text-card-foreground group-hover:text-primary transition-colors duration-300">{jobs.length}+</h3>
+                        <h3 className="mt-2 text-3xl font-bold text-card-foreground group-hover:text-primary transition-colors duration-300">{jobs.length || '0'}+</h3>
                         <p className="text-muted-foreground">Jobs Posted</p>
                     </motion.div>
                      <motion.div initial={{ opacity: 0, y: 50 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }} className="text-center p-6 bg-card rounded-lg border border-primary/20 hover:border-primary/40 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10 group">
                         <div className="mx-auto h-12 w-12 bg-gradient-to-br from-primary/20 to-accent/20 rounded-lg flex items-center justify-center group-hover:from-primary/30 group-hover:to-accent/30 transition-all duration-300">
                           <Calendar className="h-6 w-6 text-primary" />
                         </div>
-                        <h3 className="mt-2 text-3xl font-bold text-card-foreground group-hover:text-primary transition-colors duration-300">{events.length}+</h3>
+                        <h3 className="mt-2 text-3xl font-bold text-card-foreground group-hover:text-primary transition-colors duration-300">{events.length || '0'}+</h3>
                         <p className="text-muted-foreground">Events Organized</p>
                     </motion.div>
                      <motion.div initial={{ opacity: 0, y: 50 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.4 }} className="text-center p-6 bg-card rounded-lg border border-primary/20 hover:border-primary/40 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10 group">
@@ -169,11 +209,40 @@ export default function LandingPage() {
               </div>
             </div>
             <div className="mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 pt-12">
-                {featuredJobs.map((job, i) => (
-                  <motion.div key={job.id} initial={{ opacity: 0, y: 50 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: i * 0.1 }}>
-                    <JobCard job={job} />
-                  </motion.div>
-                ))}
+                {loading ? (
+                  // Loading skeleton
+                  Array.from({ length: 3 }).map((_, i) => (
+                    <motion.div key={i} initial={{ opacity: 0, y: 50 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: i * 0.1 }}>
+                      <Card className="flex flex-col border-border bg-card">
+                        <CardHeader>
+                          <div className="flex items-start gap-4">
+                            <div className="h-12 w-12 bg-muted rounded-lg animate-pulse"></div>
+                            <div className="space-y-2 flex-1">
+                              <div className="h-4 bg-muted rounded animate-pulse"></div>
+                              <div className="h-3 bg-muted rounded w-2/3 animate-pulse"></div>
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="flex-grow">
+                          <div className="h-3 bg-muted rounded animate-pulse"></div>
+                        </CardContent>
+                        <CardFooter>
+                          <div className="h-10 bg-muted rounded w-full animate-pulse"></div>
+                        </CardFooter>
+                      </Card>
+                    </motion.div>
+                  ))
+                ) : featuredJobs.length > 0 ? (
+                  featuredJobs.map((job, i) => (
+                    <motion.div key={job.id} initial={{ opacity: 0, y: 50 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: i * 0.1 }}>
+                      <JobCard job={job} />
+                    </motion.div>
+                  ))
+                ) : (
+                  <div className="col-span-full text-center py-12">
+                    <p className="text-muted-foreground">No jobs available at the moment. Check back soon!</p>
+                  </div>
+                )}
             </div>
           </div>
         </AnimatedSection>
@@ -190,11 +259,39 @@ export default function LandingPage() {
               </div>
             </div>
             <div className="mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 pt-12">
-                {upcomingEvents.map((event, i) => (
-                  <motion.div key={event.id} initial={{ opacity: 0, y: 50 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: i * 0.1 }}>
-                    <EventCard event={event} />
-                  </motion.div>
-                ))}
+                {loading ? (
+                  // Loading skeleton
+                  Array.from({ length: 3 }).map((_, i) => (
+                    <motion.div key={i} initial={{ opacity: 0, y: 50 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: i * 0.1 }}>
+                      <Card className="overflow-hidden border-border bg-card">
+                        <CardHeader className="p-0">
+                          <div className="aspect-video w-full bg-muted animate-pulse"></div>
+                        </CardHeader>
+                        <CardContent className="p-4">
+                          <div className="space-y-2">
+                            <div className="h-3 bg-muted rounded w-1/3 animate-pulse"></div>
+                            <div className="h-4 bg-muted rounded animate-pulse"></div>
+                            <div className="h-3 bg-muted rounded animate-pulse"></div>
+                          </div>
+                        </CardContent>
+                        <CardFooter className="flex justify-between p-4 pt-0">
+                          <div className="h-3 bg-muted rounded w-1/3 animate-pulse"></div>
+                          <div className="h-8 bg-muted rounded w-20 animate-pulse"></div>
+                        </CardFooter>
+                      </Card>
+                    </motion.div>
+                  ))
+                ) : upcomingEvents.length > 0 ? (
+                  upcomingEvents.map((event, i) => (
+                    <motion.div key={event.id} initial={{ opacity: 0, y: 50 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: i * 0.1 }}>
+                      <EventCard event={event} />
+                    </motion.div>
+                  ))
+                ) : (
+                  <div className="col-span-full text-center py-12">
+                    <p className="text-muted-foreground">No upcoming events at the moment. Check back soon!</p>
+                  </div>
+                )}
             </div>
           </div>
         </AnimatedSection>
