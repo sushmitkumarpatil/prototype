@@ -211,8 +211,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
           variant: 'success',
         });
         
-        // Redirect to specified URL or dashboard
-        router.push(redirectTo || '/dashboard');
+        // Redirect based on user role or specified URL
+        if (redirectTo) {
+          router.push(redirectTo);
+        } else {
+          // Default redirect based on user role
+          if (response.user.role === 'TENANT_ADMIN' || response.user.role === 'SUPER_ADMIN') {
+            router.push('/admin/dashboard');
+          } else {
+            router.push('/dashboard');
+          }
+        }
       } else {
         throw new Error(response.message || 'Login failed');
       }
@@ -232,32 +241,31 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const logout = async () => {
     try {
       setIsLoading(true);
-      
-      // Call logout API to invalidate token on server
-      try {
-        await logoutUser();
-      } catch (error) {
-        console.warn('Logout API call failed:', error);
-        // Continue with local logout even if API call fails
-      }
-      
-      // Clear local auth data
+
+      // Clear local auth data immediately for fast logout
       removeAuthData();
       setUser(null);
-      
+
+      // Call logout API in background to invalidate token on server
+      // Don't wait for it to complete to make logout feel instant
+      logoutUser().catch(error => {
+        console.warn('Background logout API call failed:', error);
+        // This is fine, local logout already completed
+      });
+
       toast({
         title: 'Logged Out',
         description: 'You have been successfully logged out',
       });
-      
-      // Redirect to login page
-      router.push('/login');
+
+      // Redirect to home page instead of login
+      router.push('/');
     } catch (error: any) {
       console.error('Logout error:', error);
       // Even if logout fails, clear local data
       removeAuthData();
       setUser(null);
-      router.push('/login');
+      router.push('/');
     } finally {
       setIsLoading(false);
     }

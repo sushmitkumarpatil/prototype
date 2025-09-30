@@ -104,6 +104,9 @@ export interface Post {
   approved_at?: string;
   created_at: string;
   updated_at: string;
+  like_count: number;
+  comment_count: number;
+  liked_by_user: boolean;
   author: {
     id: number;
     full_name: string;
@@ -142,14 +145,12 @@ export async function getJobs(page: number = 1, limit: number = 10, filters?: {
   search?: string;
 }): Promise<{
   success: boolean;
-  data: {
-    jobs: Job[];
-    pagination: {
-      page: number;
-      limit: number;
-      total: number;
-      totalPages: number;
-    };
+  jobs: Job[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
   };
 }> {
   try {
@@ -157,7 +158,7 @@ export async function getJobs(page: number = 1, limit: number = 10, filters?: {
       page: page.toString(),
       limit: limit.toString(),
     });
-    
+
     if (filters) {
       Object.entries(filters).forEach(([key, value]) => {
         if (value) params.append(key, value);
@@ -165,6 +166,25 @@ export async function getJobs(page: number = 1, limit: number = 10, filters?: {
     }
 
     const response = await api.get(`/api/jobs?${params.toString()}`);
+
+    // Transform the response to match expected structure
+    if (response.success) {
+      // Handle both response structures: { data: { jobs, pagination } } and { jobs, pagination }
+      const jobs = response.data?.jobs || response.jobs || [];
+      const pagination = response.data?.pagination || response.pagination || {
+        page: 1,
+        limit: 10,
+        total: 0,
+        totalPages: 0
+      };
+
+      return {
+        success: response.success,
+        jobs,
+        pagination
+      };
+    }
+
     return response;
   } catch (error: any) {
     console.error('Get jobs error:', error);
@@ -202,6 +222,24 @@ export async function deleteJob(jobId: number): Promise<{ success: boolean; mess
   }
 }
 
+// Get user's own jobs
+export async function getMyJobs(): Promise<{ success: boolean; jobs: Job[] }> {
+  try {
+    const response = await api.get('/api/jobs/my');
+    // The API returns { jobs: [...] }
+    return {
+      success: true,
+      jobs: response.jobs || []
+    };
+  } catch (error: any) {
+    console.error('Get my jobs error:', error);
+    return {
+      success: false,
+      jobs: []
+    };
+  }
+}
+
 // Event API functions
 export async function createEvent(data: CreateEventRequest): Promise<{ success: boolean; message: string; data: { event: Event; meta?: any } }> {
   try {
@@ -233,7 +271,7 @@ export async function getEvents(page: number = 1, limit: number = 10, filters?: 
       page: page.toString(),
       limit: limit.toString(),
     });
-    
+
     if (filters) {
       Object.entries(filters).forEach(([key, value]) => {
         if (value) params.append(key, value);
@@ -241,6 +279,21 @@ export async function getEvents(page: number = 1, limit: number = 10, filters?: 
     }
 
     const response = await api.get(`/api/events?${params.toString()}`);
+
+    // Transform the response to match expected structure
+    if (response.success && response.data) {
+      return {
+        success: response.success,
+        events: response.data || [],
+        pagination: response.pagination || {
+          page: 1,
+          limit: 10,
+          total: 0,
+          totalPages: 0
+        }
+      };
+    }
+
     return response;
   } catch (error: any) {
     console.error('Get events error:', error);
@@ -278,6 +331,24 @@ export async function deleteEvent(eventId: number): Promise<{ success: boolean; 
   }
 }
 
+// Get user's own events
+export async function getMyEvents(): Promise<{ success: boolean; events: Event[] }> {
+  try {
+    const response = await api.get('/api/events/my-events');
+    // The API returns a direct array, not an object with events property
+    return {
+      success: true,
+      events: Array.isArray(response) ? response : []
+    };
+  } catch (error: any) {
+    console.error('Get my events error:', error);
+    return {
+      success: false,
+      events: []
+    };
+  }
+}
+
 // RSVP functions
 export async function rsvpToEvent(eventId: number, status: 'INTERESTED' | 'GOING' | 'NOT_GOING'): Promise<{ success: boolean; message: string }> {
   try {
@@ -285,6 +356,106 @@ export async function rsvpToEvent(eventId: number, status: 'INTERESTED' | 'GOING
     return response;
   } catch (error: any) {
     console.error('RSVP to event error:', error);
+    throw error;
+  }
+}
+
+// Upload event image
+export async function uploadEventImage(file: File): Promise<{ success: boolean; message: string; image_url: string }> {
+  try {
+    const formData = new FormData();
+    formData.append('eventImage', file);
+
+    const response = await api.post('/api/events/upload-image', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response;
+  } catch (error: any) {
+    console.error('Upload event image error:', error);
+    throw error;
+  }
+}
+
+// Post like functions
+export async function likePost(postId: number): Promise<{ success: boolean; message: string; like_count: number; liked: boolean }> {
+  try {
+    const response = await api.post(`/api/posts/${postId}/like`);
+    return response;
+  } catch (error: any) {
+    console.error('Like post error:', error);
+    throw error;
+  }
+}
+
+export async function unlikePost(postId: number): Promise<{ success: boolean; message: string; like_count: number; liked: boolean }> {
+  try {
+    const response = await api.delete(`/api/posts/${postId}/unlike`);
+    return response;
+  } catch (error: any) {
+    console.error('Unlike post error:', error);
+    throw error;
+  }
+}
+
+// Post comment functions
+export interface Comment {
+  id: number;
+  post_id: number;
+  user_id: number;
+  content: string;
+  created_at: string;
+  updated_at: string;
+  user: {
+    id: number;
+    full_name: string;
+    profile?: {
+      profile_picture_url?: string;
+    };
+  };
+}
+
+export async function getPostComments(postId: number, page: number = 1, limit: number = 20): Promise<{
+  success: boolean;
+  data: {
+    comments: Comment[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+      hasNext: boolean;
+      hasPrev: boolean;
+    };
+  };
+}> {
+  try {
+    const response = await api.get(`/api/posts/${postId}/comments?page=${page}&limit=${limit}`);
+    return response;
+  } catch (error: any) {
+    if (error?.status !== 404) {
+      console.error('Get post comments error:', error);
+    }
+    throw error;
+  }
+}
+
+export async function addPostComment(postId: number, content: string): Promise<{
+  success: boolean;
+  data: {
+    message: string;
+    comment: Comment;
+    comment_count: number;
+  };
+}> {
+  try {
+    const response = await api.post(`/api/posts/${postId}/comments`, { content });
+    return response;
+  } catch (error: any) {
+    if (error?.status !== 404) {
+      console.error('Add post comment error:', error);
+    }
     throw error;
   }
 }
@@ -326,6 +497,21 @@ export async function getPosts(page: number = 1, limit: number = 10, filters?: {
     }
 
     const response = await api.get(`/api/posts?${params.toString()}`);
+
+    // Transform the response to match expected structure
+    if (response.success && response.data) {
+      return {
+        success: response.success,
+        posts: response.data.posts || [],
+        pagination: response.data.pagination || {
+          page: 1,
+          limit: 10,
+          total: 0,
+          totalPages: 0
+        }
+      };
+    }
+
     return response;
   } catch (error: any) {
     console.error('Get posts error:', error);
@@ -359,6 +545,47 @@ export async function deletePost(postId: number): Promise<{ success: boolean; me
     return response;
   } catch (error: any) {
     console.error('Delete post error:', error);
+    throw error;
+  }
+}
+
+// Get user's own posts
+export async function getMyPosts(userId: number): Promise<{ success: boolean; posts: Post[] }> {
+  try {
+    const response = await api.get('/api/posts', {
+      params: { author_id: userId, limit: 100 } // Get all user's posts
+    });
+    // The API returns { success: true, data: { posts: [...], pagination: {...} } }
+    return {
+      success: response.success || false,
+      posts: response.data?.posts || response.posts || []
+    };
+  } catch (error: any) {
+    console.error('Get my posts error:', error);
+    return {
+      success: false,
+      posts: []
+    };
+  }
+}
+
+// User Stats API function
+export interface UserStats {
+  myJobs: number;
+  myEvents: number;
+  myPosts: number;
+  pendingJobs: number;
+  pendingEvents: number;
+  pendingPosts: number;
+  unreadNotifications: number;
+}
+
+export async function getUserStats(): Promise<{ success: boolean; stats: UserStats }> {
+  try {
+    const response = await api.get('/api/user/stats');
+    return response;
+  } catch (error: any) {
+    console.error('Get user stats error:', error);
     throw error;
   }
 }

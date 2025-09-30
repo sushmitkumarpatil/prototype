@@ -8,8 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { NewPostDialog } from '@/components/new-content-dialogs';
 import ApprovalStatusBadge from '@/components/approval-status-badge';
-import { Plus, Search, Heart, MessageCircle, Share, MoreHorizontal } from 'lucide-react';
-import { getPosts, deletePost } from '@/lib/api/content';
+import { Plus, Search, Heart, MessageCircle, MoreHorizontal } from 'lucide-react';
+import { getPosts, deletePost, likePost, unlikePost, Post } from '@/lib/api/content';
+import { PostCommentsDialog } from '@/components/post-comments-dialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -19,28 +20,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Edit, Trash2 } from 'lucide-react';
-//
-
-interface Post {
-  id: number;
-  title?: string;
-  content: string;
-  type: string;
-  author?: {
-    id: number;
-    full_name: string;
-    email: string;
-    profile?: {
-      profile_picture_url?: string;
-    };
-  };
-  created_at: string;
-  updated_at: string;
-  likes_count?: number;
-  comments_count?: number;
-  is_liked?: boolean;
-  approval_status?: 'PENDING' | 'APPROVED' | 'REJECTED';
-}
 
 export default function PostsPage() {
   const { user } = useAuth();
@@ -48,33 +27,57 @@ export default function PostsPage() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalPosts, setTotalPosts] = useState(0);
+  const postsPerPage = 6;
+  const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
+  const [commentsDialogOpen, setCommentsDialogOpen] = useState(false);
 
   useEffect(() => {
     loadPosts();
-  }, []);
+
+    // Listen for real-time updates
+    const handleRefreshPosts = () => {
+      loadPosts();
+    };
+
+    window.addEventListener('refreshPosts', handleRefreshPosts);
+
+    return () => {
+      window.removeEventListener('refreshPosts', handleRefreshPosts);
+    };
+  }, [currentPage]);
 
   const loadPosts = async () => {
     try {
       setLoading(true);
-      const response = await getPosts();
+      const response = await getPosts(currentPage, postsPerPage);
       if (response.success && response.posts) {
-        // Transform API posts to match local interface
-        const transformedPosts = response.posts.map(post => ({
-          ...post,
-          type: 'post',
-          likes_count: 0,
-          comments_count: 0,
-          is_liked: false
-        }));
-        setPosts(transformedPosts);
+        setPosts(response.posts);
+
+        // Set pagination info
+        if (response.pagination) {
+          setTotalPages(response.pagination.pages);
+          setTotalPosts(response.pagination.total);
+        } else {
+          // Calculate pagination from response
+          const total = response.total || transformedPosts.length;
+          setTotalPosts(total);
+          setTotalPages(Math.ceil(total / postsPerPage));
+        }
       } else {
         // Set empty array if no posts or response failed
         setPosts([]);
+        setTotalPages(1);
+        setTotalPosts(0);
       }
     } catch (error: any) {
       console.error('Load posts error:', error);
       setPosts([]); // Set empty array on error
-      
+      setTotalPages(1);
+      setTotalPosts(0);
+
       // Don't show error toast for authentication errors - let the auth system handle it
       if (!error.message?.includes('Session expired') && !error.message?.includes('401')) {
         toast({
@@ -88,8 +91,8 @@ export default function PostsPage() {
     }
   };
 
-  const filteredPosts = posts.filter(post => 
-    post.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  const filteredPosts = posts.filter(post =>
+    (post.content && post.content.toLowerCase().includes(searchQuery.toLowerCase())) ||
     (post.title && post.title.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
@@ -110,12 +113,32 @@ export default function PostsPage() {
 
   const getAuthorName = (author: any) => {
     if (!author) return 'Unknown User';
-    return author.full_name || 'Unknown User';
+    if (typeof author === 'string') return author;
+    return author.full_name || author.name || 'Unknown User';
   };
 
   const getAuthorProfilePicture = (author: any) => {
-    if (!author || !author.profile) return undefined;
-    return author.profile.profile_picture_url;
+    if (!author) return undefined;
+    if (typeof author === 'string') return undefined;
+
+    let profilePictureUrl = null;
+    if (author.profile?.profile_picture_url) {
+      profilePictureUrl = author.profile.profile_picture_url;
+    } else if (author.profile_picture_url) {
+      profilePictureUrl = author.profile_picture_url;
+    }
+
+    if (!profilePictureUrl) return undefined;
+
+    // If it's already a full URL (external), return as is
+    if (profilePictureUrl.startsWith('http://') || profilePictureUrl.startsWith('https://')) {
+      return profilePictureUrl;
+    }
+    // If it's a relative path (upload), prepend the backend URL
+    if (profilePictureUrl.startsWith('/uploads/')) {
+      return `http://localhost:8000${profilePictureUrl}`;
+    }
+    return profilePictureUrl;
   };
 
   const handleDeletePost = async (postId: number) => {
@@ -144,6 +167,47 @@ export default function PostsPage() {
       });
     }
   };
+
+  const handleLikePost = async (postId: number, currentlyLiked: boolean) => {
+    try {
+      const response = currentlyLiked
+        ? await unlikePost(postId)
+        : await likePost(postId);
+
+      if (response.success) {
+        setPosts(prev => prev.map(post =>
+          post.id === postId
+            ? {
+                ...post,
+                like_count: response.like_count,
+                liked_by_user: response.liked
+              }
+            : post
+        ));
+      }
+    } catch (error: any) {
+      console.error('Like post error:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update like',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleCommentPost = (postId: number) => {
+    setSelectedPostId(postId);
+    setCommentsDialogOpen(true);
+  };
+
+  const handleCommentAdded = (postId: number, commentCount: number) => {
+    setPosts(prev => prev.map(post =>
+      post.id === postId
+        ? { ...post, comment_count: commentCount }
+        : post
+    ));
+  };
+
 
   const canEditPost = (post: Post) => {
     return user && post.author && (user.id === post.author.id || user.role === 'admin');
@@ -174,15 +238,13 @@ export default function PostsPage() {
             <p className="text-muted-foreground">Share your thoughts and connect with fellow alumni.</p>
           </div>
           <NewPostDialog onCreated={(post) => {
-            // Optimistically append for authors/admins; pending may be hidden in general feed
+            // Add the new post with default interaction values
             setPosts((prev) => [{
               ...post,
-              type: 'post',
-              author: { id: post.author?.id ?? 0, name: post.author?.full_name ?? 'You', email: post.author?.email ?? '' },
-              likes_count: 0,
-              comments_count: 0,
-              is_liked: false,
-            } as any, ...prev]);
+              like_count: 0,
+              comment_count: 0,
+              liked_by_user: false,
+            }, ...prev]);
           }}>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
@@ -277,18 +339,24 @@ export default function PostsPage() {
                   
                   {/* Actions */}
                   <div className="flex items-center justify-between mt-4 pt-4 border-t">
-                    <div className="flex items-center space-x-4">
-                      <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary">
-                        <Heart className="h-4 w-4 mr-1" />
-                        {post.likes_count}
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={`flex items-center text-muted-foreground hover:text-primary ${post.liked_by_user ? 'text-red-500' : ''}`}
+                        onClick={() => handleLikePost(post.id, post.liked_by_user)}
+                      >
+                        <Heart className={`h-4 w-4 mr-1 ${post.liked_by_user ? 'fill-current' : ''}`} />
+                        <span>{post.like_count}</span>
                       </Button>
-                      <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="flex items-center text-muted-foreground hover:text-primary"
+                        onClick={() => handleCommentPost(post.id)}
+                      >
                         <MessageCircle className="h-4 w-4 mr-1" />
-                        {post.comments_count}
-                      </Button>
-                      <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary">
-                        <Share className="h-4 w-4 mr-1" />
-                        Share
+                        <span>{post.comment_count}</span>
                       </Button>
                     </div>
                   </div>
@@ -297,7 +365,63 @@ export default function PostsPage() {
             ))
           )}
         </div>
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between mt-8">
+            <div className="text-sm text-muted-foreground">
+              Showing {((currentPage - 1) * postsPerPage) + 1} to {Math.min(currentPage * postsPerPage, totalPosts)} of {totalPosts} posts
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1 || loading}
+              >
+                Previous
+              </Button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  const pageNum = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i;
+                  return (
+                    <Button
+                      key={pageNum}
+                      variant={pageNum === currentPage ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setCurrentPage(pageNum)}
+                      disabled={loading}
+                    >
+                      {pageNum}
+                    </Button>
+                  );
+                })}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages || loading}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Comments Dialog */}
+      <PostCommentsDialog
+        postId={selectedPostId}
+        open={commentsDialogOpen}
+        onOpenChange={setCommentsDialogOpen}
+        onCommentAdded={(commentCount) => {
+          if (selectedPostId) {
+            handleCommentAdded(selectedPostId, commentCount);
+          }
+        }}
+      />
+
     </>
   );
 }

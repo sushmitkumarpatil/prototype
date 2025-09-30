@@ -8,19 +8,25 @@ import { ErrorDisplay } from '@/components/ErrorDisplay';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Bell, 
-  BellOff, 
-  Trash2, 
-  Check, 
+import {
+  Bell,
+  BellOff,
+  Trash2,
+  Check,
   CheckCheck,
   AlertCircle,
   Info,
   CheckCircle,
-  XCircle
+  XCircle,
+  Calendar,
+  FileText,
+  Users,
+  ThumbsUp,
+  ThumbsDown
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
+import { respondToFollowRequest } from '@/lib/api/follows';
 
 export default function NotificationsPage() {
   const { 
@@ -56,6 +62,12 @@ export default function NotificationsPage() {
         return <FileText className="h-5 w-5 text-purple-500" />;
       case 'connection':
         return <Users className="h-5 w-5 text-orange-500" />;
+      case 'follow_request':
+        return <Users className="h-5 w-5 text-blue-500" />;
+      case 'content_approved':
+        return <ThumbsUp className="h-5 w-5 text-green-600" />;
+      case 'content_rejected':
+        return <ThumbsDown className="h-5 w-5 text-red-600" />;
       case 'system':
         return <AlertCircle className="h-5 w-5 text-red-500" />;
       default:
@@ -103,6 +115,28 @@ export default function NotificationsPage() {
       toast({
         title: 'Error',
         description: 'Failed to delete notification.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleFollowResponse = async (notificationId: number, followerId: number, action: 'accept' | 'reject') => {
+    try {
+      const response = await respondToFollowRequest(followerId, action);
+      if (response.success) {
+        toast({
+          title: action === 'accept' ? 'Follow Request Accepted' : 'Follow Request Rejected',
+          description: `You have ${action}ed the follow request.`,
+        });
+
+        // Mark notification as read and refresh
+        await handleMarkAsRead(notificationId);
+        await refreshNotifications();
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || `Failed to ${action} follow request`,
         variant: 'destructive',
       });
     }
@@ -227,10 +261,34 @@ export default function NotificationsPage() {
                               <p className="text-sm text-muted-foreground mb-3">
                                 {notification.message}
                               </p>
+
+                              {/* Follow Request Actions */}
+                              {notification.type === 'follow_request' && notification.data?.followerId && !notification.read_at && (
+                                <div className="flex items-center gap-2 mb-3">
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleFollowResponse(notification.id, notification.data.followerId, 'accept')}
+                                    className="bg-green-600 hover:bg-green-700"
+                                  >
+                                    <CheckCircle className="h-4 w-4 mr-1" />
+                                    Accept
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleFollowResponse(notification.id, notification.data.followerId, 'reject')}
+                                    className="border-red-300 text-red-600 hover:bg-red-50"
+                                  >
+                                    <XCircle className="h-4 w-4 mr-1" />
+                                    Reject
+                                  </Button>
+                                </div>
+                              )}
+
                               <div className="flex items-center justify-between">
                                 <span className="text-xs text-muted-foreground">
-                                  {formatDistanceToNow(new Date(notification.created_at), { 
-                                    addSuffix: true 
+                                  {formatDistanceToNow(new Date(notification.created_at), {
+                                    addSuffix: true
                                   })}
                                 </span>
                                 <div className="flex items-center space-x-2">

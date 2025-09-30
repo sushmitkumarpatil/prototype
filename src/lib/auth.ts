@@ -30,7 +30,13 @@ export function saveAuthData(data: LoginResponse) {
     }
     if (data?.user) {
       localStorage.setItem(USER_DATA_KEY, JSON.stringify(data.user));
-      logAuth('Saved user data');
+      // Persist role to cookie for middleware-based route protection
+      const role = (data.user as any)?.role || '';
+      document.cookie = `userRole=${role}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax; Secure=${window.location.protocol === 'https:'}`;
+      // Convenience boolean for admin gating
+      const isAdmin = role === 'TENANT_ADMIN' || role === 'SUPER_ADMIN';
+      document.cookie = `isAdmin=${isAdmin ? '1' : '0'}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax; Secure=${window.location.protocol === 'https:'}`;
+      logAuth('Saved user data and role cookies');
     }
     if (data?.refreshToken) {
       saveRefreshToken(data.refreshToken);
@@ -134,8 +140,10 @@ export function removeAuthData() {
     localStorage.removeItem(AUTH_TOKEN_KEY);
     localStorage.removeItem(USER_DATA_KEY);
     clearRefreshToken();
-    // Also clear the auth token cookie
+    // Also clear the auth-related cookies
     document.cookie = 'authToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
+    document.cookie = 'userRole=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
+    document.cookie = 'isAdmin=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
     logAuth('Removed all auth data from localStorage and cookies');
   } catch (e) {
     logAuth('Error removing auth data', e);

@@ -2,15 +2,16 @@
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { 
-  getNotifications, 
+import {
+  getNotifications,
   getUnreadNotificationCount,
   markNotificationAsRead,
   markAllNotificationsAsRead,
   deleteNotification,
-  Notification 
+  Notification
 } from '@/lib/api/notifications';
 import { useAuth } from './AuthContext';
+import { useSocket } from './SocketContext';
 
 interface NotificationContextType {
   notifications: Notification[];
@@ -34,6 +35,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const { isAuthenticated } = useAuth();
+  const { socket, isConnected } = useSocket();
   const { toast } = useToast();
 
   // Refresh notifications when user is authenticated
@@ -47,13 +49,49 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     }
   }, [isAuthenticated]);
 
+  // Socket event listeners for real-time notifications
+  useEffect(() => {
+    if (isAuthenticated && isConnected && socket) {
+      // Listen for new notifications
+      socket.on('receive_notification', (notification: Notification) => {
+        setNotifications(prev => {
+          // Check if notification already exists to prevent duplicates
+          const exists = prev.some(n => n.id === notification.id);
+          if (exists) {
+            return prev;
+          }
+          return [notification, ...prev];
+        });
+        setUnreadCount(prev => prev + 1);
+
+        // Show toast notification
+        toast({
+          title: notification.title,
+          description: notification.message,
+        });
+      });
+
+      // Listen for notification count updates
+      socket.on('notification_count', (count: number) => {
+        setUnreadCount(count);
+      });
+
+      return () => {
+        socket.off('receive_notification');
+        socket.off('notification_count');
+      };
+    }
+  }, [isAuthenticated, isConnected, socket, toast]);
+
   const refreshNotifications = async () => {
     if (!isAuthenticated) return;
-    
+
     try {
       setIsLoading(true);
       const response = await getNotifications(1, 20);
       if (response.success) {
+        // Replace notifications completely with fresh data from API
+        // This ensures we have the most up-to-date state from the server
         setNotifications(response.notifications);
       }
     } catch (error: any) {

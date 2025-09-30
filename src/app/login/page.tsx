@@ -1,15 +1,17 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import Link from '@/components/ui/link';
 import AuthLayout from '@/components/auth-layout';
 import { useRouter, useSearchParams } from 'next/navigation';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login, isLoading, isAuthenticated } = useAuth();
@@ -89,5 +91,13 @@ export default function LoginPage() {
         </div>
       </form>
     </AuthLayout>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <LoginContent />
+    </Suspense>
   );
 }

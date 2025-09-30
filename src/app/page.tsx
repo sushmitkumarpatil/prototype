@@ -1,4 +1,7 @@
 'use client';
+
+export const dynamic = 'force-dynamic';
+
 import { useState, useEffect } from 'react';
 import AnimatedSection from "@/components/animated-section";
 import { PublicFooter } from "@/components/public-footer";
@@ -8,8 +11,14 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { users } from "@/lib/mock-data";
 import { getJobs, getEvents, Job, Event } from "@/lib/api/content";
 import { motion } from "framer-motion";
-import { ArrowRight, Briefcase, Calendar, MapPin, Users } from "lucide-react";
+import { ArrowRight, Briefcase, Calendar, MapPin, Users, ChevronDown, User, Shield } from "lucide-react";
 import Link from "next/link";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const JobCard = ({ job }: { job: Job }) => {
   return (
@@ -45,11 +54,25 @@ const JobCard = ({ job }: { job: Job }) => {
 }
 
 const EventCard = ({ event }: { event: Event }) => {
+  // Helper function to get the correct image URL
+  const getImageUrl = (imageUrl: string) => {
+    if (!imageUrl) return null;
+    // If it's already a full URL (external), return as is
+    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+      return imageUrl;
+    }
+    // If it's a relative path (upload), prepend the backend URL
+    if (imageUrl.startsWith('/uploads/')) {
+      return `http://localhost:8000${imageUrl}`;
+    }
+    return imageUrl;
+  };
+
   return (
     <Card className="overflow-hidden border-border hover:border-primary/50 transition-all duration-300 hover:shadow-xl bg-card group">
       <CardHeader className="p-0">
         {event.image_url ? (
-          <img src={event.image_url} alt={event.title} className="aspect-video w-full object-cover group-hover:scale-105 transition-transform duration-300" />
+          <img src={getImageUrl(event.image_url)} alt={event.title} className="aspect-video w-full object-cover group-hover:scale-105 transition-transform duration-300" />
         ) : (
           <div className="aspect-video w-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
             <Calendar className="h-12 w-12 text-primary/60" />
@@ -141,9 +164,28 @@ export default function LandingPage() {
                   <Button asChild size="lg" className="bg-gradient-to-r from-accent to-accent/90 hover:from-accent/90 hover:to-accent text-accent-foreground shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105">
                     <Link href="/signup">Join Now</Link>
                   </Button>
-                  <Button asChild size="lg" variant="secondary" className="border-primary/30 hover:border-primary/50 hover:bg-primary/5 text-card-foreground hover:text-primary transition-all duration-300">
-                    <Link href="/login">Member Login</Link>
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button size="lg" variant="secondary" className="border-primary/30 hover:border-primary/50 hover:bg-primary/5 text-card-foreground hover:text-primary transition-all duration-300">
+                        Member Login
+                        <ChevronDown className="ml-2 h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuItem asChild>
+                        <Link href="/login" className="flex items-center w-full">
+                          <User className="mr-2 h-4 w-4" />
+                          User Login
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href="/admin/login" className="flex items-center w-full">
+                          <Shield className="mr-2 h-4 w-4" />
+                          Admin Login
+                        </Link>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </motion.div>
               </div>
               <motion.img

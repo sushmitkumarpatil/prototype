@@ -9,13 +9,20 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Briefcase, MapPin, Search, Plus } from "lucide-react";
 import { NewJobDialog } from "@/components/new-content-dialogs";
 import ApprovalStatusBadge from "@/components/approval-status-badge";
+import { JobDetailsDialog } from "@/components/job-details-dialog";
 import { getJobs, Job } from "@/lib/api/content";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
-const JobCard = ({ job }: { job: Job }) => {
-  const getInitials = (name: string) => {
+const JobCard = ({ job, onViewDetails }: { job: Job; onViewDetails: (job: Job) => void }) => {
+  const getInitials = (name: string | undefined) => {
+    if (!name) return '??';
     return name.split(' ').map((n) => n[0]).join('').toUpperCase();
+  };
+
+  const getAuthorName = (author: any) => {
+    if (!author) return 'Unknown User';
+    return author.full_name || 'Unknown User';
   };
 
   const formatDate = (dateString: string) => {
@@ -44,11 +51,11 @@ const JobCard = ({ job }: { job: Job }) => {
             <div className="flex items-center gap-2 mt-2">
               <Avatar className="h-6 w-6">
                 <AvatarFallback className="bg-gradient-to-r from-primary to-accent text-primary-foreground text-xs">
-                  {getInitials(job.author.full_name)}
+                  {getInitials(getAuthorName(job.author))}
                 </AvatarFallback>
               </Avatar>
               <span className="text-xs text-muted-foreground">
-                Posted by {job.author.full_name} • {formatDate(job.created_at)}
+                Posted by {getAuthorName(job.author)} • {formatDate(job.created_at)}
               </span>
             </div>
           </div>
@@ -73,14 +80,8 @@ const JobCard = ({ job }: { job: Job }) => {
             </Badge>
           </div>
         </div>
-        <Button className="w-full" onClick={() => {
-          if (job.apply_link_or_email.startsWith('http')) {
-            window.open(job.apply_link_or_email, '_blank');
-          } else {
-            window.location.href = `mailto:${job.apply_link_or_email}`;
-          }
-        }}>
-          View Details & Apply
+        <Button className="w-full" onClick={() => onViewDetails(job)}>
+          View Details
         </Button>
       </CardFooter>
     </Card>
@@ -95,27 +96,55 @@ export default function JobsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [jobTypeFilter, setJobTypeFilter] = useState('');
   const [workModeFilter, setWorkModeFilter] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalJobs, setTotalJobs] = useState(0);
+  const jobsPerPage = 6;
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [jobDetailsOpen, setJobDetailsOpen] = useState(false);
 
   useEffect(() => {
     loadJobs();
-  }, []);
+
+    // Listen for real-time updates
+    const handleRefreshJobs = () => {
+      loadJobs();
+    };
+
+    window.addEventListener('refreshJobs', handleRefreshJobs);
+
+    return () => {
+      window.removeEventListener('refreshJobs', handleRefreshJobs);
+    };
+  }, [currentPage]);
 
   const loadJobs = async () => {
     try {
       setLoading(true);
-      const response = await getJobs(1, 50); // Load more jobs initially
+      const response = await getJobs(currentPage, jobsPerPage);
       if (response.success) {
-        // Handle response structure - jobs should be in response.data.jobs
-        const jobsData = response.data?.jobs || [];
+        // Handle response structure - jobs should be in response.jobs
+        const jobsData = response.jobs || [];
         // Filter out any undefined/null items
         const validJobs = jobsData.filter((job: any) => job && job.id);
         setJobs(validJobs);
+
+        // Set pagination info
+        if (response.pagination) {
+          setTotalPages(response.pagination.totalPages || response.pagination.pages || 1);
+          setTotalJobs(response.pagination.total || 0);
+        } else {
+          // Calculate pagination from response
+          const total = validJobs.length;
+          setTotalJobs(total);
+          setTotalPages(Math.ceil(total / jobsPerPage));
+        }
       } else {
         throw new Error('Failed to load jobs');
       }
     } catch (error: any) {
       console.error('Load jobs error:', error);
-      
+
       // Don't show error toast for authentication errors
       if (!error.message?.includes('Session expired') && !error.message?.includes('401')) {
         toast({
@@ -124,9 +153,11 @@ export default function JobsPage() {
           variant: 'destructive',
         });
       }
-      
+
       // Set empty array on error to prevent undefined map errors
       setJobs([]);
+      setTotalPages(1);
+      setTotalJobs(0);
     } finally {
       setLoading(false);
     }
@@ -151,6 +182,11 @@ export default function JobsPage() {
     
     return matchesSearch && matchesJobType && matchesWorkMode;
   });
+
+  const handleViewDetails = (job: Job) => {
+    setSelectedJob(job);
+    setJobDetailsOpen(true);
+  };
 
   if (loading) {
     return (
@@ -233,9 +269,59 @@ export default function JobsPage() {
             </Card>
           </div>
         ) : (
-          filteredJobs.map(job => <JobCard key={job.id} job={job} />)
+          filteredJobs.map(job => <JobCard key={job.id} job={job} onViewDetails={handleViewDetails} />)
         )}
       </div>
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-8">
+          <div className="text-sm text-muted-foreground">
+            Showing {((currentPage - 1) * jobsPerPage) + 1} to {Math.min(currentPage * jobsPerPage, totalJobs)} of {totalJobs} jobs
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1 || loading}
+            >
+              Previous
+            </Button>
+            <div className="flex items-center gap-1">
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                const pageNum = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i;
+                return (
+                  <Button
+                    key={pageNum}
+                    variant={pageNum === currentPage ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCurrentPage(pageNum)}
+                    disabled={loading}
+                  >
+                    {pageNum}
+                  </Button>
+                );
+              })}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages || loading}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Job Details Dialog */}
+      <JobDetailsDialog
+        job={selectedJob}
+        open={jobDetailsOpen}
+        onOpenChange={setJobDetailsOpen}
+      />
     </div>
   );
 }

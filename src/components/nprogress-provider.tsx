@@ -1,11 +1,11 @@
 "use client";
 
 import { usePathname, useSearchParams } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, Suspense } from "react";
 
 import NProgress from "nprogress";
 
-export function NProgressProvider({ children }: { children: React.ReactNode }) {
+function NProgressContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -14,4 +14,12 @@ export function NProgressProvider({ children }: { children: React.ReactNode }) {
   }, [pathname, searchParams]);
 
   return children;
+}
+
+export function NProgressProvider({ children }: { children: React.ReactNode }) {
+  return (
+    <Suspense fallback={children}>
+      <NProgressContent>{children}</NProgressContent>
+    </Suspense>
+  );
 }

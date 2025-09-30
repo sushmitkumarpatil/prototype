@@ -1,98 +1,148 @@
 'use client';
+
+export const dynamic = 'force-dynamic';
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { events, users } from "@/lib/mock-data";
-import { Calendar, Plus, Search, Edit, Trash2, Eye, MapPin, Clock, Users, Image as ImageIcon } from "lucide-react";
-import { useState } from "react";
+import { Calendar, Plus, Search, Edit, Trash2, Eye, MapPin, Clock, Users, RefreshCw, CheckCircle, XCircle, CalendarDays } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { getAllEvents, approveEvent, rejectEvent } from "@/lib/api/admin";
+import { motion } from "framer-motion";
+
+interface Event {
+    id: number;
+    title: string;
+    description?: string;
+    location?: string;
+    start_time: string;
+    end_time?: string;
+    approval_status: string;
+    author: {
+        id: number;
+        full_name: string;
+        email: string;
+        role: string;
+    };
+    tenant?: {
+        name: string;
+        subdomain: string;
+    };
+    created_at: string;
+    approval_status?: string;
+}
 
 export default function AdminEventsPage() {
+    const { toast } = useToast();
+    const [loading, setLoading] = useState(true);
+    const [events, setEvents] = useState<Event[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
-    const [filterLocation, setFilterLocation] = useState('all');
-    const [filterDate, setFilterDate] = useState('all');
+    const [pagination, setPagination] = useState({
+        page: 1,
+        limit: 20,
+        total: 0,
+        pages: 0,
+        hasNext: false,
+        hasPrev: false,
+    });
 
-    const getAuthor = (authorId: number) => users.find((user) => user.id === authorId);
+    useEffect(() => {
+        loadEvents();
+    }, []);
+
+    const loadEvents = async (page: number = 1, search?: string) => {
+        try {
+            setLoading(true);
+            const response = await getAllEvents(page, 20, search);
+
+            if (response.success) {
+                setEvents(response.events);
+                setPagination(response.pagination);
+            }
+        } catch (error: any) {
+            toast({
+                title: 'Error',
+                description: error.message || 'Failed to load events',
+                variant: 'destructive',
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleApproveEvent = async (eventId: number) => {
+        try {
+            await approveEvent(eventId);
+            toast({
+                title: 'Success',
+                description: 'Event approved successfully',
+                variant: 'success',
+            });
+            loadEvents(pagination.page, searchTerm);
+        } catch (error: any) {
+            toast({
+                title: 'Error',
+                description: error.message || 'Failed to approve event',
+                variant: 'destructive',
+            });
+        }
+    };
+
+    const handleRejectEvent = async (eventId: number) => {
+        try {
+            await rejectEvent(eventId);
+            toast({
+                title: 'Success',
+                description: 'Event rejected successfully',
+                variant: 'success',
+            });
+            loadEvents(pagination.page, searchTerm);
+        } catch (error: any) {
+            toast({
+                title: 'Error',
+                description: error.message || 'Failed to reject event',
+                variant: 'destructive',
+            });
+        }
+    };
+
+    const handleSearch = (value: string) => {
+        setSearchTerm(value);
+        loadEvents(1, value);
+    };
 
     const filteredEvents = events.filter(event => {
         const matchesSearch = event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            event.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            event.location.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesLocation = filterLocation === 'all' || event.location === filterLocation;
-        
-        // Date filtering logic
-        let matchesDate = true;
-        if (filterDate !== 'all') {
-            const eventDate = new Date(event.date);
-            const now = new Date();
-            if (filterDate === 'upcoming') {
-                matchesDate = eventDate > now;
-            } else if (filterDate === 'past') {
-                matchesDate = eventDate < now;
-            } else if (filterDate === 'today') {
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                const tomorrow = new Date(today);
-                tomorrow.setDate(tomorrow.getDate() + 1);
-                matchesDate = eventDate >= today && eventDate < tomorrow;
-            }
-        }
-        
-        return matchesSearch && matchesLocation && matchesDate;
+                            (event.location && event.location.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                            (event.description && event.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                            event.author.full_name.toLowerCase().includes(searchTerm.toLowerCase());
+
+        return matchesSearch;
     });
 
-    const upcomingEvents = events.filter(event => new Date(event.date) > new Date()).length;
-    const pastEvents = events.filter(event => new Date(event.date) < new Date()).length;
-    const todayEvents = events.filter(event => {
-        const eventDate = new Date(event.date);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        return eventDate >= today && eventDate < tomorrow;
-    }).length;
-
-    const totalEvents = events.length;
-
-    const formatDate = (dateString: string) => {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('en-US', { 
-            weekday: 'short', 
-            month: 'short', 
-            day: 'numeric',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    };
-
-    const getEventStatus = (dateString: string) => {
-        const eventDate = new Date(dateString);
-        const now = new Date();
-        
-        if (eventDate < now) {
-            return { status: 'Past', variant: 'secondary' as const };
-        } else if (eventDate.getTime() - now.getTime() < 24 * 60 * 60 * 1000) { // Within 24 hours
-            return { status: 'Today', variant: 'destructive' as const };
-        } else {
-            return { status: 'Upcoming', variant: 'default' as const };
-        }
-    };
+    const totalEvents = pagination.total;
+    const pendingEvents = events.filter(event => event.approval_status === 'PENDING').length;
+    const approvedEvents = events.filter(event => event.approval_status === 'APPROVED').length;
 
     return (
-        <div className="flex flex-col gap-6">
+        <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-6"
+        >
             {/* Header */}
             <div className="flex flex-col gap-2">
                 <h1 className="text-3xl font-bold tracking-tight">Event Management</h1>
                 <p className="text-muted-foreground">
-                    Manage events, monitor registrations, and track event performance.
+                    Review and manage event submissions from users.
                 </p>
             </div>
 
             {/* Stats Cards */}
-            <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Total Events</CardTitle>
@@ -100,176 +150,195 @@ export default function AdminEventsPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{totalEvents}</div>
-                        <p className="text-xs text-muted-foreground">+3 since last month</p>
+                        <p className="text-xs text-muted-foreground">
+                            All events
+                        </p>
                     </CardContent>
                 </Card>
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Upcoming Events</CardTitle>
+                        <CardTitle className="text-sm font-medium">Pending Events</CardTitle>
                         <Clock className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{upcomingEvents}</div>
-                        <p className="text-xs text-muted-foreground">Scheduled events</p>
+                        <div className="text-2xl font-bold">{pendingEvents}</div>
+                        <p className="text-xs text-muted-foreground">
+                            Awaiting approval
+                        </p>
                     </CardContent>
                 </Card>
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Today's Events</CardTitle>
-                        <Users className="h-4 w-4 text-muted-foreground" />
+                        <CardTitle className="text-sm font-medium">Approved Events</CardTitle>
+                        <CheckCircle className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{todayEvents}</div>
-                        <p className="text-xs text-muted-foreground">Events happening today</p>
+                        <div className="text-2xl font-bold">{approvedEvents}</div>
+                        <p className="text-xs text-muted-foreground">
+                            Already approved
+                        </p>
                     </CardContent>
                 </Card>
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Past Events</CardTitle>
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        <CardTitle className="text-sm font-medium">Filtered Results</CardTitle>
+                        <Search className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{pastEvents}</div>
-                        <p className="text-xs text-muted-foreground">Completed events</p>
+                        <div className="text-2xl font-bold">{filteredEvents.length}</div>
+                        <p className="text-xs text-muted-foreground">
+                            Matching search criteria
+                        </p>
                     </CardContent>
                 </Card>
             </div>
 
-            {/* Filters and Actions */}
+            {/* Event Management */}
             <Card>
                 <CardHeader>
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                         <div>
-                            <CardTitle>Event Management</CardTitle>
+                            <CardTitle className="flex items-center gap-2">
+                                <CalendarDays className="h-5 w-5" />
+                                Event Management
+                            </CardTitle>
                             <CardDescription>
-                                Manage and monitor all events in the system.
+                                Review and manage all event submissions from users.
                             </CardDescription>
                         </div>
-                        <Button className="bg-primary hover:bg-primary/90">
-                            <Plus className="mr-2 h-4 w-4" />
-                            Create New Event
+                        <Button onClick={() => loadEvents(pagination.page, searchTerm)} variant="outline" size="sm">
+                            <RefreshCw className="h-4 w-4 mr-2" />
+                            Refresh
                         </Button>
                     </div>
                 </CardHeader>
                 <CardContent>
-                    {/* Search and Filters */}
+                    {/* Search */}
                     <div className="flex flex-col sm:flex-row gap-4 mb-6">
                         <div className="relative flex-1">
                             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                             <Input
-                                placeholder="Search events by title, description, or location..."
+                                placeholder="Search events by title, location, author..."
                                 value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
+                                onChange={(e) => handleSearch(e.target.value)}
                                 className="pl-8"
                             />
                         </div>
-                        <Select value={filterLocation} onValueChange={setFilterLocation}>
-                            <SelectTrigger className="w-[180px]">
-                                <SelectValue placeholder="Location" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Locations</SelectItem>
-                                <SelectItem value="Online">Online</SelectItem>
-                                <SelectItem value="College Auditorium">College Auditorium</SelectItem>
-                                <SelectItem value="Conference Room">Conference Room</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <Select value={filterDate} onValueChange={setFilterDate}>
-                            <SelectTrigger className="w-[180px]">
-                                <SelectValue placeholder="Date Filter" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Dates</SelectItem>
-                                <SelectItem value="upcoming">Upcoming</SelectItem>
-                                <SelectItem value="today">Today</SelectItem>
-                                <SelectItem value="past">Past</SelectItem>
-                            </SelectContent>
-                        </Select>
                     </div>
-
-                    {/* Events Table */}
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Event</TableHead>
-                                <TableHead>Date & Time</TableHead>
-                                <TableHead>Location</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead>Organizer</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {filteredEvents.map((event) => {
-                                const author = getAuthor(event.authorId);
-                                const eventStatus = getEventStatus(event.date);
-                                return (
-                                    <TableRow key={event.id}>
-                                        <TableCell>
-                                            <div className="flex items-center gap-3">
-                                                <div className="h-12 w-12 rounded-lg bg-muted flex items-center justify-center">
-                                                    <ImageIcon className="h-6 w-6 text-muted-foreground" />
-                                                </div>
-                                                <div>
-                                                    <div className="font-medium">{event.title}</div>
-                                                    <div className="text-sm text-muted-foreground line-clamp-2">
-                                                        {event.description}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex items-center gap-2">
-                                                <Clock className="h-4 w-4 text-muted-foreground" />
-                                                {formatDate(event.date)}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex items-center gap-2">
-                                                <MapPin className="h-4 w-4 text-muted-foreground" />
-                                                {event.location}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Badge variant={eventStatus.variant}>
-                                                {eventStatus.status}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="text-sm">
-                                                {author?.name}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <div className="flex justify-end gap-2">
-                                                <Button variant="outline" size="sm">
-                                                    <Eye className="h-4 w-4" />
-                                                </Button>
-                                                <Button variant="outline" size="sm">
-                                                    <Edit className="h-4 w-4" />
-                                                </Button>
-                                                <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        </TableCell>
+                    {loading ? (
+                        <div className="flex items-center justify-center py-8">
+                            <RefreshCw className="h-6 w-6 animate-spin mr-2" />
+                            <span>Loading events...</span>
+                        </div>
+                    ) : (
+                        <div className="rounded-md border">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Event</TableHead>
+                                        <TableHead>Date & Time</TableHead>
+                                        <TableHead>Location</TableHead>
+                                        <TableHead>Author</TableHead>
+                                        <TableHead>Status</TableHead>
+                                        <TableHead>Created</TableHead>
+                                        <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
-                                );
-                            })}
-                        </TableBody>
-                    </Table>
-
-                    {filteredEvents.length === 0 && (
-                        <div className="text-center py-8">
-                            <Calendar className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                            <h3 className="text-lg font-medium mb-2">No events found</h3>
-                            <p className="text-muted-foreground">
-                                Try adjusting your search criteria or create a new event.
-                            </p>
+                                </TableHeader>
+                                <TableBody>
+                                    {filteredEvents.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                                                No events found
+                                            </TableCell>
+                                        </TableRow>
+                                    ) : (
+                                        filteredEvents.map((event) => (
+                                            <TableRow key={event.id}>
+                                                <TableCell>
+                                                    <div>
+                                                        <div className="font-medium">{event.title}</div>
+                                                        {event.description && (
+                                                            <div className="text-sm text-muted-foreground line-clamp-2">
+                                                                {event.description.substring(0, 100)}...
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex items-center gap-2">
+                                                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                                                        {new Date(event.start_time).toLocaleDateString()}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex items-center gap-2">
+                                                        <MapPin className="h-4 w-4 text-muted-foreground" />
+                                                        {event.location || 'No location specified'}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="font-medium">{event.author.full_name}</div>
+                                                        {event.author.is_verified && (
+                                                            <CheckCircle className="h-4 w-4 text-success" />
+                                                        )}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Badge
+                                                        variant={event.approval_status === 'APPROVED' ? 'default' :
+                                                                event.approval_status === 'PENDING' ? 'secondary' : 'destructive'}
+                                                        className={event.approval_status === 'APPROVED' ? 'bg-green-100 text-green-800' :
+                                                                  event.approval_status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                                                                  'bg-red-100 text-red-800'}
+                                                    >
+                                                        {event.approval_status}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell>
+                                                    {new Date(event.created_at).toLocaleDateString()}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        {event.approval_status === 'PENDING' && (
+                                                            <>
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    className="text-success border-success hover:bg-success/10"
+                                                                    onClick={() => handleApproveEvent(event.id)}
+                                                                >
+                                                                    <CheckCircle className="h-4 w-4 mr-1" />
+                                                                    Approve
+                                                                </Button>
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    className="text-destructive border-destructive hover:bg-destructive/10"
+                                                                    onClick={() => handleRejectEvent(event.id)}
+                                                                >
+                                                                    <XCircle className="h-4 w-4 mr-1" />
+                                                                    Reject
+                                                                </Button>
+                                                            </>
+                                                        )}
+                                                        <Button
+                                                            size="sm"
+                                                            variant="ghost"
+                                                        >
+                                                            <Eye className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    )}
+                                </TableBody>
+                            </Table>
                         </div>
                     )}
                 </CardContent>
             </Card>
-        </div>
+        </motion.div>
     );
 }

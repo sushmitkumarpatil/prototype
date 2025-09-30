@@ -1,8 +1,14 @@
 'use client';
 import Link from "next/link";
 import { Button } from "./ui/button";
-import { Sun, Moon } from "lucide-react";
+import { Sun, Moon, ChevronDown, User, Shield } from "lucide-react";
 import { useTheme } from "next-themes";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
 
 export function PublicHeader() {
   const { theme, setTheme } = useTheme();
@@ -29,9 +35,28 @@ export function PublicHeader() {
           <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
           <span className="sr-only">Toggle theme</span>
         </Button>
-        <Button variant="ghost" asChild className="text-primary hover:text-primary/80 hover:bg-gradient-to-r hover:from-primary/10 hover:to-accent/10 border border-primary/20 hover:border-primary/40 transition-all duration-300">
-            <Link href="/login">Login</Link>
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="text-primary hover:text-primary/80 hover:bg-gradient-to-r hover:from-primary/10 hover:to-accent/10 border border-primary/20 hover:border-primary/40 transition-all duration-300">
+              Login
+              <ChevronDown className="ml-1 h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuItem asChild>
+              <Link href="/login" className="flex items-center w-full">
+                <User className="mr-2 h-4 w-4" />
+                User Login
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/admin/login" className="flex items-center w-full">
+                <Shield className="mr-2 h-4 w-4" />
+                Admin Login
+              </Link>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <Button asChild className="bg-gradient-to-r from-accent to-primary hover:from-accent/90 hover:to-primary/90 text-accent-foreground shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300">
             <Link href="/signup">Sign Up</Link>
         </Button>

@@ -1,9 +1,14 @@
 import { DashboardLayoutClient } from './layout-client';
+import { NotificationProvider } from '@/contexts/NotificationContext';
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return <DashboardLayoutClient>{children}</DashboardLayoutClient>;
+  return (
+    <NotificationProvider>
+      <DashboardLayoutClient>{children}</DashboardLayoutClient>
+    </NotificationProvider>
+  );
 }

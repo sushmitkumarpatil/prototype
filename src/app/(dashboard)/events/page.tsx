@@ -8,11 +8,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { MapPin, Search, Plus, Calendar, Clock } from "lucide-react";
 import { NewEventDialog } from "@/components/new-content-dialogs";
 import ApprovalStatusBadge from "@/components/approval-status-badge";
+import { EventDetailsDialog } from "@/components/event-details-dialog";
 import { getEvents, Event } from "@/lib/api/content";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
-const EventCard = ({ event }: { event: Event }) => {
+const EventCard = ({ event, onViewDetails }: { event: Event; onViewDetails: (event: Event) => void }) => {
   const getInitials = (name: string) => {
     return name.split(' ').map((n) => n[0]).join('').toUpperCase();
   };
@@ -45,20 +46,46 @@ const EventCard = ({ event }: { event: Event }) => {
     });
   };
 
+  // Helper function to get the correct image URL
+  const getImageUrl = (imageUrl: string) => {
+    if (!imageUrl) return null;
+    // If it's already a full URL (external), return as is
+    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+      return imageUrl;
+    }
+    // If it's a relative path (upload), prepend the backend URL
+    if (imageUrl.startsWith('/uploads/')) {
+      return `http://localhost:8000${imageUrl}`;
+    }
+    return imageUrl;
+  };
+
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
       <CardHeader className="p-0">
         {event.image_url ? (
-          <img 
-            src={event.image_url} 
-            alt={event.title} 
-            className="aspect-video w-full object-cover" 
+          <img
+            src={getImageUrl(event.image_url)}
+            alt={event.title}
+            className="aspect-video w-full object-cover"
+            onError={(e) => {
+              console.error('Failed to load image:', event.image_url);
+              // Hide the image and show the fallback
+              e.currentTarget.style.display = 'none';
+              const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+              if (fallback) fallback.style.display = 'flex';
+            }}
           />
-        ) : (
+        ) : null}
+        {!event.image_url && (
           <div className="aspect-video w-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
             <Calendar className="h-12 w-12 text-primary/60" />
           </div>
         )}
+        {/* Fallback div for failed image loads */}
+        <div className="aspect-video w-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center" style={{ display: 'none' }}>
+          <Calendar className="h-12 w-12 text-primary/60" />
+        </div>
       </CardHeader>
       <CardContent className="p-4">
         <div className="flex items-center gap-2 mb-2">
@@ -91,23 +118,25 @@ const EventCard = ({ event }: { event: Event }) => {
           </div>
         </div>
       </CardContent>
-      <CardFooter className="flex justify-between p-4 pt-0">
-        <div className="flex items-center text-sm text-muted-foreground">
-          <MapPin className="mr-1.5 h-4 w-4" /> 
-          {event.location || 'Location TBD'}
+      <CardFooter className="flex flex-col gap-2 p-4 pt-0">
+        <div className="flex w-full items-center justify-between">
+          <div className="flex items-center text-sm text-muted-foreground">
+            <MapPin className="mr-1.5 h-4 w-4" />
+            {event.location || 'Location TBD'}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onViewDetails(event)}
+          >
+            Show Details
+          </Button>
         </div>
-        <Button 
-          variant="outline" 
-          size="sm"
-          onClick={() => {
-            if (event.rsvp_link) {
-              window.open(event.rsvp_link, '_blank');
-            }
-          }}
-          disabled={!event.rsvp_link}
-        >
-          {event.rsvp_link ? 'Details & RSVP' : 'Details'}
-        </Button>
+        {!event.rsvp_link && (
+          <p className="w-full text-center text-xs text-muted-foreground">
+            RSVP link not available yet. Check back later or contact the organizer.
+          </p>
+        )}
       </CardFooter>
     </Card>
   )
@@ -120,29 +149,61 @@ export default function EventsPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFilter, setDateFilter] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalEvents, setTotalEvents] = useState(0);
+  const eventsPerPage = 6;
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [eventDetailsOpen, setEventDetailsOpen] = useState(false);
 
   useEffect(() => {
     loadEvents();
-  }, []);
+
+    // Listen for real-time updates
+    const handleRefreshEvents = () => {
+      loadEvents();
+    };
+
+    window.addEventListener('refreshEvents', handleRefreshEvents);
+
+    return () => {
+      window.removeEventListener('refreshEvents', handleRefreshEvents);
+    };
+  }, [currentPage]);
 
   const loadEvents = async () => {
     try {
       setLoading(true);
-      const response = await getEvents(1, 50); // Load more events initially
+      const response = await getEvents(currentPage, eventsPerPage);
       console.log('Events API response:', response); // Debug log
-      
+
       if (response.success) {
         // Handle different response structures
         const eventsData = response.events || [];
         setEvents(Array.isArray(eventsData) ? eventsData : []);
+
+        // Set pagination info
+        if (response.pagination) {
+          setTotalPages(response.pagination.pages);
+          setTotalEvents(response.pagination.total);
+        } else {
+          // Calculate pagination from response
+          const total = response.total || eventsData.length;
+          setTotalEvents(total);
+          setTotalPages(Math.ceil(total / eventsPerPage));
+        }
       } else {
         console.error('Events API returned unsuccessful response:', response);
         setEvents([]);
+        setTotalPages(1);
+        setTotalEvents(0);
       }
     } catch (error: any) {
       console.error('Load events error:', error);
       setEvents([]); // Set empty array on error
-      
+      setTotalPages(1);
+      setTotalEvents(0);
+
       // Don't show error toast for authentication errors
       if (!error.message?.includes('Session expired') && !error.message?.includes('401')) {
         toast({
@@ -159,6 +220,11 @@ export default function EventsPage() {
   const applyFilters = () => {
     // This could be enhanced to make API calls with filters
     // For now, we'll filter client-side
+  };
+
+  const handleViewDetails = (event: Event) => {
+    setSelectedEvent(event);
+    setEventDetailsOpen(true);
   };
 
   const filteredEvents = events.filter(event => {
@@ -246,9 +312,59 @@ export default function EventsPage() {
             </Card>
           </div>
         ) : (
-          sortedEvents.map(event => <EventCard key={event.id} event={event} />)
+          sortedEvents.map(event => <EventCard key={event.id} event={event} onViewDetails={handleViewDetails} />)
         )}
       </div>
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-8">
+          <div className="text-sm text-muted-foreground">
+            Showing {((currentPage - 1) * eventsPerPage) + 1} to {Math.min(currentPage * eventsPerPage, totalEvents)} of {totalEvents} events
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1 || loading}
+            >
+              Previous
+            </Button>
+            <div className="flex items-center gap-1">
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                const pageNum = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i;
+                return (
+                  <Button
+                    key={pageNum}
+                    variant={pageNum === currentPage ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCurrentPage(pageNum)}
+                    disabled={loading}
+                  >
+                    {pageNum}
+                  </Button>
+                );
+              })}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages || loading}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Event Details Dialog */}
+      <EventDetailsDialog
+        event={selectedEvent}
+        open={eventDetailsOpen}
+        onOpenChange={setEventDetailsOpen}
+      />
     </div>
   );
 }

@@ -19,6 +19,47 @@ export interface DashboardStats {
   }>;
 }
 
+// Actual API response format
+export interface DashboardResponse {
+  users: {
+    total: number;
+    pending: number;
+    approved: number;
+    rejected: number;
+    deactivated: number;
+    alumni: number;
+    students: number;
+  };
+  content: {
+    posts: number;
+    jobs: number;
+    events: number;
+  };
+  recentActivity: {
+    users: number;
+    posts: number;
+    jobs: number;
+    events: number;
+  };
+  pending: {
+    jobs: number;
+    events: number;
+    users: number;
+  };
+  tenants?: Array<{
+    id: number;
+    name: string;
+    subdomain: string;
+    is_active: boolean;
+    _count: {
+      users: number;
+      general_posts: number;
+      jobs: number;
+      events: number;
+    };
+  }>;
+}
+
 export interface User {
   id: number;
   tenant_id: number;
@@ -78,9 +119,9 @@ export interface ApproveContentRequest {
 }
 
 // Admin Dashboard API functions
-export async function getDashboardStats(): Promise<{ success: boolean; stats: DashboardStats }> {
+export async function getDashboardStats(): Promise<{ success: boolean; data: DashboardResponse }> {
   try {
-    const response = await api.get('/api/admin/dashboard/stats');
+    const response = await api.get('/api/admin/dashboard');
     return response;
   } catch (error: any) {
     console.error('Get dashboard stats error:', error);
@@ -177,7 +218,7 @@ export async function getContentModeration(page: number = 1, limit: number = 20,
       });
     }
 
-    const response = await api.get(`/api/admin/content/moderation?${params.toString()}`);
+    const response = await api.get(`/api/admin/approvals/content/moderation?${params.toString()}`);
     return response;
   } catch (error: any) {
     console.error('Get content moderation error:', error);
@@ -187,10 +228,450 @@ export async function getContentModeration(page: number = 1, limit: number = 20,
 
 export async function approveContent(contentId: number, type: 'job' | 'event' | 'post', data: ApproveContentRequest): Promise<{ success: boolean; message: string }> {
   try {
-    const response = await api.post(`/api/admin/approvals/${type}/${contentId}`, data);
-    return response;
+    if (data.action === 'REJECT') {
+      // Use reject endpoint for reject action
+      const response = await api.post(`/api/admin/approvals/content/${type}/${contentId}/reject`, { reason: data.reason });
+      return response;
+    } else {
+      // Use approve endpoint for approve action
+      const response = await api.post(`/api/admin/approvals/content/${type}/${contentId}/approve`, data);
+      return response;
+    }
   } catch (error: any) {
     console.error('Approve content error:', error);
+    throw error;
+  }
+}
+
+export async function rejectContent(contentId: number, type: 'job' | 'event' | 'post', reason: string): Promise<{ success: boolean; message: string }> {
+  try {
+    const response = await api.post(`/api/admin/approvals/content/${type}/${contentId}/reject`, { reason });
+    return response;
+  } catch (error: any) {
+    console.error('Reject content error:', error);
+    throw error;
+  }
+}
+
+// Approval API Functions
+export async function getApprovalStats(): Promise<{
+  success: boolean;
+  stats: {
+    pending_jobs: number;
+    pending_events: number;
+    pending_posts: number;
+    pending_users: number;
+  };
+}> {
+  try {
+    const response = await api.get('/api/admin/approvals/stats');
+    return response;
+  } catch (error: any) {
+    console.error('Get approval stats error:', error);
+    throw error;
+  }
+}
+
+export async function getPendingJobs(): Promise<{
+  success: boolean;
+  jobs: Array<{
+    id: number;
+    title: string;
+    company_name: string;
+    location?: string;
+    description: string;
+    author: {
+      id: number;
+      full_name: string;
+      is_verified: boolean;
+    };
+    created_at: string;
+  }>;
+}> {
+  try {
+    const response = await api.get('/api/admin/approvals/content/pending?type=jobs');
+    return { success: response.success, jobs: response.content || [] };
+  } catch (error: any) {
+    console.error('Get pending jobs error:', error);
+    throw error;
+  }
+}
+
+export async function getPendingEvents(): Promise<{
+  success: boolean;
+  events: Array<{
+    id: number;
+    title: string;
+    description?: string;
+    location?: string;
+    start_time: string;
+    end_time?: string;
+    author: {
+      id: number;
+      full_name: string;
+      is_verified: boolean;
+    };
+    created_at: string;
+  }>;
+}> {
+  try {
+    const response = await api.get('/api/admin/approvals/content/pending?type=events');
+    return { success: response.success, events: response.content || [] };
+  } catch (error: any) {
+    console.error('Get pending events error:', error);
+    throw error;
+  }
+}
+
+export async function getAllEvents(page: number = 1, limit: number = 20, search?: string): Promise<{
+  success: boolean;
+  events: Array<{
+    id: number;
+    title: string;
+    description?: string;
+    location?: string;
+    start_time: string;
+    end_time?: string;
+    approval_status: string;
+    author: {
+      id: number;
+      full_name: string;
+      email: string;
+      role: string;
+    };
+    tenant?: {
+      name: string;
+      subdomain: string;
+    };
+    created_at: string;
+  }>;
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
+}> {
+  try {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString(),
+    });
+
+    if (search) {
+      params.append('search', search);
+    }
+
+    const response = await api.get(`/api/admin/events?${params.toString()}`);
+    return {
+      success: response.success,
+      events: response.data?.events || [],
+      pagination: response.data?.pagination || {
+        page: 1,
+        limit: 20,
+        total: 0,
+        pages: 0,
+        hasNext: false,
+        hasPrev: false,
+      }
+    };
+  } catch (error: any) {
+    console.error('Get all events error:', error);
+    throw error;
+  }
+}
+
+export async function getAllJobs(page: number = 1, limit: number = 20, search?: string, jobType?: string): Promise<{
+  success: boolean;
+  jobs: Array<{
+    id: number;
+    title: string;
+    company_name: string;
+    location?: string;
+    description: string;
+    job_type: string;
+    approval_status: string;
+    author: {
+      id: number;
+      full_name: string;
+      email: string;
+      role: string;
+    };
+    tenant?: {
+      name: string;
+      subdomain: string;
+    };
+    created_at: string;
+  }>;
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
+}> {
+  try {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString(),
+    });
+
+    if (search) {
+      params.append('search', search);
+    }
+
+    if (jobType) {
+      params.append('job_type', jobType);
+    }
+
+    const response = await api.get(`/api/admin/jobs?${params.toString()}`);
+    return {
+      success: response.success,
+      jobs: response.data?.jobs || [],
+      pagination: response.data?.pagination || {
+        page: 1,
+        limit: 20,
+        total: 0,
+        pages: 0,
+        hasNext: false,
+        hasPrev: false,
+      }
+    };
+  } catch (error: any) {
+    console.error('Get all jobs error:', error);
+    throw error;
+  }
+}
+
+export async function getAllPosts(page: number = 1, limit: number = 20, search?: string): Promise<{
+  success: boolean;
+  posts: Array<{
+    id: number;
+    title?: string;
+    content: string;
+    image_url?: string;
+    approval_status: string;
+    author: {
+      id: number;
+      full_name: string;
+      email: string;
+      role: string;
+    };
+    tenant?: {
+      name: string;
+      subdomain: string;
+    };
+    created_at: string;
+  }>;
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
+}> {
+  try {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString(),
+    });
+
+    if (search) {
+      params.append('search', search);
+    }
+
+    const response = await api.get(`/api/admin/posts?${params.toString()}`);
+    return {
+      success: response.success,
+      posts: response.data?.posts || [],
+      pagination: response.data?.pagination || {
+        page: 1,
+        limit: 20,
+        total: 0,
+        pages: 0,
+        hasNext: false,
+        hasPrev: false,
+      }
+    };
+  } catch (error: any) {
+    console.error('Get all posts error:', error);
+    throw error;
+  }
+}
+
+export async function getPendingPosts(): Promise<{
+  success: boolean;
+  posts: Array<{
+    id: number;
+    title?: string;
+    content: string;
+    image_url?: string;
+    author: {
+      id: number;
+      full_name: string;
+      is_verified: boolean;
+    };
+    created_at: string;
+  }>;
+}> {
+  try {
+    const response = await api.get('/api/admin/approvals/content/pending?type=posts');
+    return { success: response.success, posts: response.content || [] };
+  } catch (error: any) {
+    console.error('Get pending posts error:', error);
+    throw error;
+  }
+}
+
+export async function approveJob(jobId: number): Promise<{ success: boolean; message: string }> {
+  try {
+    const response = await api.post(`/api/admin/approvals/content/job/${jobId}/approve`, { reason: 'Approved by admin' });
+    return response;
+  } catch (error: any) {
+    console.error('Approve job error:', error);
+    throw error;
+  }
+}
+
+export async function rejectJob(jobId: number): Promise<{ success: boolean; message: string }> {
+  try {
+    const response = await api.post(`/api/admin/approvals/content/job/${jobId}/reject`, { reason: 'Rejected by admin' });
+    return response;
+  } catch (error: any) {
+    console.error('Reject job error:', error);
+    throw error;
+  }
+}
+
+export async function approveEvent(eventId: number): Promise<{ success: boolean; message: string }> {
+  try {
+    const response = await api.post(`/api/admin/approvals/content/event/${eventId}/approve`, { reason: 'Approved by admin' });
+    return response;
+  } catch (error: any) {
+    console.error('Approve event error:', error);
+    throw error;
+  }
+}
+
+export async function rejectEvent(eventId: number): Promise<{ success: boolean; message: string }> {
+  try {
+    const response = await api.post(`/api/admin/approvals/content/event/${eventId}/reject`, { reason: 'Rejected by admin' });
+    return response;
+  } catch (error: any) {
+    console.error('Reject event error:', error);
+    throw error;
+  }
+}
+
+export async function approvePost(postId: number): Promise<{ success: boolean; message: string }> {
+  try {
+    const response = await api.post(`/api/admin/approvals/content/post/${postId}/approve`, { reason: 'Approved by admin' });
+    return response;
+  } catch (error: any) {
+    console.error('Approve post error:', error);
+    throw error;
+  }
+}
+
+export async function rejectPost(postId: number): Promise<{ success: boolean; message: string }> {
+  try {
+    const response = await api.post(`/api/admin/approvals/content/post/${postId}/reject`, { reason: 'Rejected by admin' });
+    return response;
+  } catch (error: any) {
+    console.error('Reject post error:', error);
+    throw error;
+  }
+}
+
+export async function verifyUser(userId: number): Promise<{ success: boolean; message: string }> {
+  try {
+    const response = await api.patch(`/api/admin/approvals/users/${userId}/verify`);
+    return response;
+  } catch (error: any) {
+    console.error('Verify user error:', error);
+    throw error;
+  }
+}
+
+export async function unverifyUser(userId: number): Promise<{ success: boolean; message: string }> {
+  try {
+    const response = await api.patch(`/api/admin/approvals/users/${userId}/unverify`);
+    return response;
+  } catch (error: any) {
+    console.error('Unverify user error:', error);
+    throw error;
+  }
+}
+
+// Course Management API Functions
+export async function getCourses(): Promise<{
+  success: boolean;
+  data: {
+    courses: Array<{
+      id: number;
+      course_name: string;
+      created_at: string;
+      student_count: number;
+    }>;
+  };
+}> {
+  try {
+    const response = await api.get('/api/courses');
+    return response;
+  } catch (error: any) {
+    console.error('Get courses error:', error);
+    throw error;
+  }
+}
+
+export async function addCourse(courseName: string): Promise<{
+  success: boolean;
+  message: string;
+  data: {
+    course: {
+      id: number;
+      course_name: string;
+      created_at: string;
+    };
+  };
+}> {
+  try {
+    const response = await api.post('/api/courses', { course_name: courseName });
+    return response;
+  } catch (error: any) {
+    console.error('Add course error:', error);
+    throw error;
+  }
+}
+
+export async function updateCourse(courseId: number, courseName: string): Promise<{
+  success: boolean;
+  message: string;
+}> {
+  try {
+    const response = await api.put(`/api/courses/${courseId}`, { course_name: courseName });
+    return response;
+  } catch (error: any) {
+    console.error('Update course error:', error);
+    throw error;
+  }
+}
+
+export async function deleteCourse(courseId: number): Promise<{
+  success: boolean;
+  message: string;
+}> {
+  try {
+    const response = await api.delete(`/api/courses/${courseId}`);
+    return response;
+  } catch (error: any) {
+    console.error('Delete course error:', error);
     throw error;
   }
 }

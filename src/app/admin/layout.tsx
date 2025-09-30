@@ -1,302 +1,328 @@
 'use client';
+
+import React, { useState, useEffect } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
-  SidebarProvider,
-  Sidebar,
-  SidebarHeader,
-  SidebarContent,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  SidebarFooter,
-  SidebarTrigger,
-  SidebarInset,
-  useSidebar,
-} from '@/components/ui/sidebar';
-import {
-  Bell,
-  Briefcase,
-  Calendar,
-  ChevronDown,
-  Edit,
-  FileText,
   LayoutDashboard,
   LogOut,
-  MessageSquare,
-  Moon,
-  Plus,
-  Search,
   ShieldCheck,
-  Sun,
-  UserCircle,
   Users,
-  PanelLeft,
-  PanelLeftClose,
   CheckCircle,
+  FileText,
+  Briefcase,
+  Calendar,
+  BarChart3,
+  Search,
+  Menu,
+  X,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
-  DropdownMenuPortal,
-  DropdownMenuSubContent,
-  DropdownMenuGroup,
-} from '@/components/ui/dropdown-menu';
 import Link from '@/components/ui/link';
-import { currentUser } from '@/lib/mock-data';
-import { usePathname } from 'next/navigation';
-import { useTheme } from 'next-themes';
+import { useAuth } from '@/contexts/AuthContext';
 
-// Enhanced Sidebar Toggle Button Component
-function EnhancedSidebarToggle() {
-  const { state, toggleSidebar } = useSidebar();
-  
-  return (
-    <Button
-      variant="ghost"
-      size="icon"
-      onClick={toggleSidebar}
-      className="h-10 w-10 rounded-lg transition-all duration-300 ease-in-out hover:bg-gradient-to-r hover:from-primary/20 hover:to-accent/20 hover:scale-105 active:scale-95 text-primary hover:text-primary/80 border border-primary/20 hover:border-primary/40"
-      title={state === 'expanded' ? 'Collapse Sidebar' : 'Expand Sidebar'}
-    >
-      <div className="relative h-5 w-5">
-        <PanelLeft 
-          className={`absolute inset-0 transition-all duration-300 ease-in-out ${
-            state === 'expanded' 
-              ? 'opacity-100 rotate-0 scale-100' 
-              : 'opacity-0 rotate-90 scale-75'
-          }`}
-        />
-        <PanelLeftClose 
-          className={`absolute inset-0 transition-all duration-300 ease-in-out ${
-            state === 'expanded' 
-              ? 'opacity-0 -rotate-90 scale-75' 
-              : 'opacity-100 rotate-0 scale-100'
-          }`}
-        />
-      </div>
-      <span className="sr-only">
-        {state === 'expanded' ? 'Collapse Sidebar' : 'Expand Sidebar'}
-      </span>
-    </Button>
-  );
+interface AdminLayoutProps {
+  children: React.ReactNode;
 }
 
-export default function AdminLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function AdminLayout({ children }: AdminLayoutProps) {
   const pathname = usePathname();
-  const { setTheme } = useTheme();
+  const router = useRouter();
+  const { logout, user, isAuthenticated } = useAuth();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  const getInitials = (name: string) => {
-    return name.split(' ').map((n) => n[0]).join('');
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // If this is the login page, render children without layout
+  if (pathname === '/admin/login') {
+    return <>{children}</>;
+  }
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      router.push('/admin/login');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
+
+  const menuItems = [
+    {
+      href: '/admin/dashboard',
+      icon: LayoutDashboard,
+      label: 'Dashboard',
+    },
+    {
+      href: '/admin/users',
+      icon: Users,
+      label: 'Users',
+    },
+    {
+      href: '/admin/approvals',
+      icon: CheckCircle,
+      label: 'Approvals',
+    },
+    {
+      href: '/admin/content',
+      icon: FileText,
+      label: 'Content',
+    },
+    {
+      href: '/admin/jobs',
+      icon: Briefcase,
+      label: 'Jobs',
+    },
+    {
+      href: '/admin/events',
+      icon: Calendar,
+      label: 'Events',
+    },
+    {
+      href: '/admin/posts',
+      icon: FileText,
+      label: 'Posts',
+    },
+    {
+      href: '/admin/reports',
+      icon: BarChart3,
+      label: 'Reports',
+    },
+  ];
+
+  // Don't render layout until mounted and user is authenticated admin
+  const isAdmin = user && (user.role === 'TENANT_ADMIN' || user.role === 'SUPER_ADMIN');
+  if (!mounted || !isAuthenticated || !isAdmin) {
+    return null;
   }
 
   return (
-    <SidebarProvider>
-      <Sidebar
-        variant="sidebar"
-        collapsible="icon"
-        className="border-r border-sidebar-border transition-all duration-500 ease-out bg-sidebar-background"
-      >
-        <SidebarHeader className="border-b border-sidebar-border bg-sidebar-background">
-          <Link href="/admin/dashboard" className="flex items-center gap-2 p-4">
-            <ShieldCheck className="h-6 w-6 text-sidebar-primary" />
-            <span className="font-headline text-xl font-bold transition-all duration-500 ease-out group-data-[collapsible=icon]:-translate-x-4 group-data-[collapsible=icon]:opacity-0 text-sidebar-foreground">
-              Admin Panel
-            </span>
-          </Link>
-        </SidebarHeader>
-        <SidebarContent>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                isActive={pathname === '/admin/dashboard'}
-                tooltip={{ children: 'Dashboard' }}
-                className="text-sidebar-foreground hover:bg-sidebar-primary/10 hover:text-sidebar-primary data-[active=true]:bg-sidebar-primary/20 data-[active=true]:text-sidebar-primary data-[active=true]:shadow-sm"
-              >
-                <Link href="/admin/dashboard">
-                  <LayoutDashboard />
-                  <span className="transition-all duration-300 ease-out group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:translate-x-2">Dashboard</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                isActive={pathname.startsWith('/admin/users')}
-                tooltip={{ children: 'User Management' }}
-                className="text-sidebar-foreground hover:bg-sidebar-primary/10 hover:text-sidebar-primary data-[active=true]:bg-sidebar-primary/20 data-[active=true]:text-sidebar-primary data-[active=true]:shadow-sm"
-              >
-                <Link href="/admin/users">
-                  <Users />
-                  <span className="transition-all duration-300 ease-out group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:translate-x-2">Users</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                isActive={pathname.startsWith('/admin/approvals')}
-                tooltip={{ children: 'Content Approvals' }}
-                className="text-sidebar-foreground hover:bg-sidebar-primary/10 hover:text-sidebar-primary data-[active=true]:bg-sidebar-primary/20 data-[active=true]:text-sidebar-primary data-[active=true]:shadow-sm"
-              >
-                <Link href="/admin/approvals">
-                  <CheckCircle />
-                  <span className="transition-all duration-300 ease-out group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:translate-x-2">Approvals</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                isActive={pathname.startsWith('/admin/content')}
-                tooltip={{ children: 'Content Management' }}
-                className="text-sidebar-foreground hover:bg-sidebar-primary/10 hover:text-sidebar-primary data-[active=true]:bg-sidebar-primary/20 data-[active=true]:text-sidebar-primary data-[active=true]:shadow-sm"
-              >
-                <Link href="/admin/content">
-                  <FileText />
-                  <span className="transition-all duration-300 ease-out group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:translate-x-2">Content</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                isActive={pathname.startsWith('/admin/jobs')}
-                tooltip={{ children: 'Job Management' }}
-                className="text-sidebar-foreground hover:bg-sidebar-primary/10 hover:text-sidebar-primary data-[active=true]:bg-sidebar-primary/20 data-[active=true]:text-sidebar-primary data-[active=true]:shadow-sm"
-              >
-                <Link href="/admin/jobs">
-                  <Briefcase />
-                  <span className="transition-all duration-300 ease-out group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:translate-x-2">Jobs</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                isActive={pathname.startsWith('/admin/events')}
-                tooltip={{ children: 'Event Management' }}
-                className="text-sidebar-foreground hover:bg-sidebar-primary/10 hover:text-sidebar-primary data-[active=true]:bg-sidebar-primary/20 data-[active=true]:text-sidebar-primary data-[active=true]:shadow-sm"
-              >
-                <Link href="/admin/events">
-                  <Calendar />
-                  <span className="transition-all duration-300 ease-out group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:translate-x-2">Events</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                isActive={pathname.startsWith('/admin/posts')}
-                tooltip={{ children: 'Post Management' }}
-                className="text-sidebar-foreground hover:bg-sidebar-primary/10 hover:text-sidebar-primary data-[active=true]:bg-sidebar-primary/20 data-[active=true]:text-sidebar-primary data-[active=true]:shadow-sm"
-              >
-                <Link href="/admin/posts">
-                  <FileText />
-                  <span className="transition-all duration-300 ease-out group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:translate-x-2">Posts</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                isActive={pathname.startsWith('/admin/reports')}
-                tooltip={{ children: 'Reports & Analytics' }}
-                className="text-sidebar-foreground hover:bg-sidebar-primary/10 hover:text-sidebar-primary data-[active=true]:bg-sidebar-primary/20 data-[active=true]:text-sidebar-primary data-[active=true]:shadow-sm"
-              >
-                <Link href="/admin/reports">
-                  <FileText />
-                  <span className="transition-all duration-300 ease-out group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:translate-x-2">Reports</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarContent>
-        <SidebarFooter className="border-t border-sidebar-border bg-sidebar-background">
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild tooltip={{ children: 'Logout' }} className="text-sidebar-foreground hover:bg-sidebar-primary/10 hover:text-sidebar-primary">
-                <Link href="/admin/login">
-                  <LogOut />
-                  <span className="transition-all duration-300 ease-out group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:translate-x-2">Logout</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarFooter>
-      </Sidebar>
-      <SidebarInset>
-        <div className="flex h-full flex-col">
-          <header className="flex h-14 items-center gap-4 border-b bg-background/95 px-4 backdrop-blur-sm md:px-6 transition-all duration-300 ease-out shadow-lg border-primary/10">
-            {/* Mobile Sidebar Trigger */}
-            <SidebarTrigger className="flex md:hidden text-primary hover:text-primary/80" />
-            
-            {/* Desktop Enhanced Sidebar Toggle */}
-            <div className="hidden md:flex">
-              <EnhancedSidebarToggle />
+    <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-accent/5 flex">
+      {/* Mobile Sidebar Overlay */}
+      <AnimatePresence>
+        {sidebarOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Desktop Sidebar - Always visible on desktop */}
+      <div className="w-72 bg-card/95 backdrop-blur-xl border-r border-border shadow-2xl flex-shrink-0 hidden lg:flex">
+        <div className="flex flex-col h-full">
+          {/* Header */}
+          <div className="p-6 border-b border-border bg-gradient-to-r from-primary/10 to-accent/10">
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-r from-primary to-accent shadow-lg">
+                <ShieldCheck className="h-7 w-7 text-primary-foreground" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">Admin Panel</h1>
+                <p className="text-sm text-muted-foreground">Management Dashboard</p>
+              </div>
             </div>
-            
-            <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground transition-colors duration-200" />
-              <Input placeholder="Search users, content, reports..." className="w-full rounded-lg bg-secondary pl-8 md:w-[200px] lg:w-[320px] transition-all duration-300 ease-out focus:ring-2 focus:ring-primary/20 border-primary/20 hover:border-primary/40 focus:border-primary" />
+          </div>
+
+          {/* Navigation */}
+          <nav className="flex-1 p-4 space-y-2">
+            <div className="px-3 py-2">
+              <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Navigation
+              </h2>
             </div>
-            <Button variant="ghost" size="icon" className="rounded-full transition-all duration-200 ease-out hover:bg-gradient-to-r hover:from-primary/20 hover:to-accent/20 hover:scale-105 text-primary hover:text-primary/80 border border-primary/20 hover:border-primary/40">
-              <Bell className="h-5 w-5" />
-              <span className="sr-only">Notifications</span>
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-10 w-10 rounded-full transition-all duration-200 ease-out hover:bg-gradient-to-r hover:from-primary/20 hover:to-accent/20 hover:scale-105 text-primary hover:text-primary/80 border border-primary/20 hover:border-primary/40">
-                   <Avatar className="h-9 w-9">
-                    <AvatarImage src={currentUser.avatar} alt={currentUser.name} />
-                    <AvatarFallback className="bg-gradient-to-r from-primary to-accent text-primary-foreground">{getInitials(currentUser.name)}</AvatarFallback>
-                  </Avatar>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="bg-popover border-primary/20">
-                <DropdownMenuLabel className="text-popover-foreground">Admin Account</DropdownMenuLabel>
-                <DropdownMenuSeparator className="bg-primary/20" />
-                <DropdownMenuItem asChild className="text-popover-foreground hover:bg-gradient-to-r hover:from-primary/10 hover:to-accent/10 hover:text-primary"><Link href="/admin/profile">Profile</Link></DropdownMenuItem>
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger className="text-popover-foreground hover:bg-gradient-to-r hover:from-primary/10 hover:to-accent/10 hover:text-primary">
-                    <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-                    <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-                    <span>Toggle theme</span>
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuPortal>
-                    <DropdownMenuSubContent className="bg-popover border-primary/20">
-                      <DropdownMenuItem onClick={() => setTheme("light")} className="text-popover-foreground hover:bg-gradient-to-r hover:from-primary/10 hover:to-accent/10 hover:text-primary">
-                        Light
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setTheme("dark")} className="text-popover-foreground hover:bg-gradient-to-r hover:from-primary/10 hover:to-accent/10 hover:text-primary">
-                        Dark
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setTheme("system")} className="text-popover-foreground hover:bg-gradient-to-r hover:from-primary/10 hover:to-accent/10 hover:text-primary">
-                        System
-                      </DropdownMenuItem>
-                    </DropdownMenuSubContent>
-                  </DropdownMenuPortal>
-                </DropdownMenuSub>
-                <DropdownMenuSeparator className="bg-primary/20" />
-                <DropdownMenuItem asChild className="text-popover-foreground hover:bg-gradient-to-r hover:from-primary/10 hover:to-accent/10 hover:text-primary"><Link href="/admin/login">Logout</Link></DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </header>
-          <main className="flex-1 overflow-auto p-4 md:p-6 transition-all duration-300 ease-out bg-gradient-to-br from-background via-primary/5 to-accent/5">{children}</main>
+            {menuItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = pathname === item.href || (item.href !== '/admin/dashboard' && pathname.startsWith(item.href));
+
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 ${
+                    isActive
+                      ? 'bg-primary text-primary-foreground shadow-lg'
+                      : 'text-foreground hover:bg-primary/10 hover:text-primary'
+                  }`}
+                >
+                  <Icon className="h-5 w-5" />
+                  <span className="font-medium">{item.label}</span>
+                </Link>
+              );
+            })}
+          </nav>
+
+          {/* Footer */}
+          <div className="p-4 border-t border-border">
+            {user && (
+              <div className="mb-4 p-3 rounded-lg bg-muted border border-border">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-sm font-bold">
+                    {user.full_name?.charAt(0) || user.email?.charAt(0) || 'A'}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">
+                      {user.full_name || 'Admin User'}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {user.role === 'SUPER_ADMIN' ? 'Super Admin' : 'Tenant Admin'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-3 px-4 py-3 w-full text-foreground hover:bg-destructive/10 hover:text-destructive rounded-xl transition-all duration-300"
+            >
+              <LogOut className="h-5 w-5" />
+              <span className="font-medium">Logout</span>
+            </button>
+          </div>
         </div>
-      </SidebarInset>
-    </SidebarProvider>
+      </div>
+
+      {/* Mobile Sidebar */}
+      <AnimatePresence>
+        {sidebarOpen && (
+          <motion.div
+            initial={{ x: -300 }}
+            animate={{ x: 0 }}
+            exit={{ x: -300 }}
+            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+            className="fixed left-0 top-0 bottom-0 w-72 bg-card border-r border-border shadow-xl z-50 lg:hidden"
+          >
+            <div className="flex flex-col h-full">
+              {/* Mobile Header */}
+              <div className="p-6 border-b border-border">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary shadow-lg">
+                      <ShieldCheck className="h-7 w-7 text-primary-foreground" />
+                    </div>
+                    <div>
+                      <h1 className="text-xl font-bold text-foreground">Admin Panel</h1>
+                      <p className="text-sm text-muted-foreground">Management Dashboard</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setSidebarOpen(false)}
+                    className="p-2 rounded-lg hover:bg-muted transition-colors"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Mobile Navigation */}
+              <nav className="flex-1 p-4 space-y-2">
+                <div className="px-3 py-2">
+                  <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Navigation
+                  </h2>
+                </div>
+                {menuItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = pathname === item.href || (item.href !== '/admin/dashboard' && pathname.startsWith(item.href));
+
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setSidebarOpen(false)}
+                      className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 ${
+                        isActive
+                          ? 'bg-primary text-primary-foreground shadow-lg'
+                          : 'text-foreground hover:bg-primary/10 hover:text-primary'
+                      }`}
+                    >
+                      <Icon className="h-5 w-5" />
+                      <span className="font-medium">{item.label}</span>
+                    </Link>
+                  );
+                })}
+              </nav>
+
+              {/* Mobile Footer */}
+              <div className="p-4 border-t border-border">
+                {user && (
+                  <div className="mb-4 p-3 rounded-lg bg-muted border border-border">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-sm font-bold">
+                        {user.full_name?.charAt(0) || user.email?.charAt(0) || 'A'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">
+                          {user.full_name || 'Admin User'}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {user.role === 'SUPER_ADMIN' ? 'Super Admin' : 'Tenant Admin'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-3 px-4 py-3 w-full text-foreground hover:bg-destructive/10 hover:text-destructive rounded-xl transition-all duration-300"
+                >
+                  <LogOut className="h-5 w-5" />
+                  <span className="font-medium">Logout</span>
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Main content */}
+      <div className="flex-1 min-h-screen flex flex-col">
+        {/* Top Header */}
+        <header className="bg-card/95 backdrop-blur-xl border-b border-border px-6 py-4 shadow-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="lg:hidden p-2 rounded-lg hover:bg-muted transition-colors"
+              >
+                <Menu className="h-5 w-5" />
+              </button>
+              <div>
+                <h2 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                  {menuItems.find(item => pathname === item.href || (item.href !== '/admin/dashboard' && pathname.startsWith(item.href)))?.label || 'Dashboard'}
+                </h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Manage your platform efficiently
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  className="pl-10 pr-4 py-2 border border-input rounded-xl bg-background/80 backdrop-blur-sm text-foreground placeholder-muted-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-all duration-300"
+                />
+              </div>
+              <div className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-success to-success/80 text-success-foreground rounded-xl shadow-lg">
+                <div className="w-2 h-2 bg-success-foreground rounded-full animate-pulse"></div>
+                <span className="text-sm font-medium">Live</span>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Page Content */}
+        <main className="flex-1 p-6 bg-gradient-to-br from-background/50 via-primary/5 to-accent/5 overflow-auto">
+          {children}
+        </main>
+      </div>
+    </div>
   );
 }

@@ -2,27 +2,27 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useNotifications } from '@/contexts/NotificationContext';
 //
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { ErrorDisplay } from '@/components/ErrorDisplay';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
-  User, 
-  Bell, 
-  Briefcase, 
-  Calendar, 
-  FileText, 
-  Users, 
-  Settings,
+import {
+  User,
+  Briefcase,
+  Calendar,
+  FileText,
+  Users,
   LogOut,
-  Plus
+  Plus,
+  Bell
 } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { getPosts, getJobs, getEvents } from '@/lib/api/content';
+import { getPosts, getJobs, getEvents, getUserStats } from '@/lib/api/content';
+import { RecentActivity } from '@/components/RecentActivity';
+import { ContentApprovalStatus } from '@/components/ContentApprovalStatus';
+import { UserApprovalDashboard } from '@/components/UserApprovalDashboard';
 
 // Helper function to get welcome message
 function getWelcomeMessage(user: any) {
@@ -54,41 +54,68 @@ function getWelcomeMessage(user: any) {
 
 export default function DashboardPage() {
   const { user, logout, isLoading: authLoading } = useAuth();
-  const { unreadCount, notifications, refreshNotifications } = useNotifications();
   const [stats, setStats] = useState({
-    totalJobs: 0,
-    totalEvents: 0,
-    totalPosts: 0,
-    totalUsers: 0,
+    myJobs: 0,
+    myEvents: 0,
+    myPosts: 0,
+    pendingJobs: 0,
+    pendingEvents: 0,
+    pendingPosts: 0,
+    unreadNotifications: 0,
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
 
   useEffect(() => {
     if (user) {
       loadDashboardData();
     }
+
+    // Listen for real-time updates
+    const handleRefreshData = () => {
+      if (user) {
+        loadDashboardData();
+      }
+    };
+
+    // Function to handle activity refresh (can be used for future activity updates)
+    const handleRefreshActivity = () => {
+      // This can be used to refresh activity data specifically
+      // For now, we'll just refresh the dashboard data
+      if (user) {
+        loadDashboardData();
+      }
+    };
+
+    window.addEventListener('refreshPosts', handleRefreshData);
+    window.addEventListener('refreshJobs', handleRefreshData);
+    window.addEventListener('refreshEvents', handleRefreshData);
+
+    // Listen for activity updates
+    window.addEventListener('refreshPosts', handleRefreshActivity);
+    window.addEventListener('refreshJobs', handleRefreshActivity);
+    window.addEventListener('refreshEvents', handleRefreshActivity);
+
+    return () => {
+      window.removeEventListener('refreshPosts', handleRefreshData);
+      window.removeEventListener('refreshJobs', handleRefreshData);
+      window.removeEventListener('refreshEvents', handleRefreshData);
+      window.removeEventListener('refreshPosts', handleRefreshActivity);
+      window.removeEventListener('refreshJobs', handleRefreshActivity);
+      window.removeEventListener('refreshEvents', handleRefreshActivity);
+    };
   }, [user]);
 
   const loadDashboardData = async () => {
     try {
       setLoading(true);
       setError(null);
-      
-      // Fetch counts from APIs (pagination.total reflects visibility and tenant filters)
-      const [postsRes, jobsRes, eventsRes] = await Promise.allSettled([
-        getPosts(1, 1),
-        getJobs(1, 1),
-        getEvents(1, 1),
-      ]);
-      
-      setStats((prev) => ({
-        ...prev,
-        totalPosts: postsRes.status === 'fulfilled' ? postsRes.value?.pagination?.total || 0 : 0,
-        totalJobs: jobsRes.status === 'fulfilled' ? jobsRes.value?.pagination?.total || 0 : 0,
-        totalEvents: eventsRes.status === 'fulfilled' ? eventsRes.value?.pagination?.total || 0 : 0,
-      }));
+
+      // Fetch user-specific stats
+      const statsResponse = await getUserStats();
+      if (statsResponse.success) {
+        setStats(statsResponse.stats);
+      }
     } catch (err: any) {
       console.error('Dashboard data loading error:', err);
       setError(err.message || 'Failed to load dashboard data');
@@ -127,23 +154,13 @@ export default function DashboardPage() {
           <div className="container mx-auto px-4 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
-                <h1 className="text-2xl font-bold">Dashboard</h1>
+                <h1 className="text-2xl font-bold">User Dashboard</h1>
                 <Badge variant="secondary">
                   {user?.role}
                 </Badge>
               </div>
               <div className="flex items-center space-x-4">
-                <Button variant="ghost" size="sm" asChild>
-                  <Link href="/notifications">
-                    <Bell className="h-4 w-4 mr-2" />
-                    Notifications
-                    {unreadCount > 0 && (
-                      <Badge variant="destructive" className="ml-2">
-                        {unreadCount}
-                      </Badge>
-                    )}
-                  </Link>
-                </Button>
+
                 <Button variant="ghost" size="sm" asChild>
                   <Link href="/profile">
                     <User className="h-4 w-4 mr-2" />
@@ -171,56 +188,56 @@ export default function DashboardPage() {
             </p>
           </div>
 
-          {/* Stats Grid */}
+          {/* Stats Grid - User-specific stats matching admin dashboard style */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Jobs</CardTitle>
+                <CardTitle className="text-sm font-medium">My Jobs</CardTitle>
                 <Briefcase className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stats.totalJobs}</div>
+                <div className="text-2xl font-bold">{stats.myJobs || 0}</div>
                 <p className="text-xs text-muted-foreground">
-                  Available opportunities
+                  {stats.pendingJobs || 0} pending approval
                 </p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Upcoming Events</CardTitle>
+                <CardTitle className="text-sm font-medium">My Events</CardTitle>
                 <Calendar className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stats.totalEvents}</div>
+                <div className="text-2xl font-bold">{stats.myEvents || 0}</div>
                 <p className="text-xs text-muted-foreground">
-                  Events this month
+                  {stats.pendingEvents || 0} pending approval
                 </p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Community Posts</CardTitle>
+                <CardTitle className="text-sm font-medium">My Posts</CardTitle>
                 <FileText className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stats.totalPosts}</div>
+                <div className="text-2xl font-bold">{stats.myPosts || 0}</div>
                 <p className="text-xs text-muted-foreground">
-                  Recent discussions
+                  {stats.pendingPosts || 0} pending approval
                 </p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Active Members</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium">Notifications</CardTitle>
+                <Bell className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stats.totalUsers}</div>
+                <div className="text-2xl font-bold">{stats.unreadNotifications || 0}</div>
                 <p className="text-xs text-muted-foreground">
-                  Community members
+                  Unread messages
                 </p>
               </CardContent>
             </Card>
@@ -298,47 +315,11 @@ export default function DashboardPage() {
             </Card>
           </div>
 
-          {/* Recent Activity */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Activity</CardTitle>
-              <CardDescription>
-                Latest updates from your community
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <LoadingSpinner text="Loading recent activity..." />
-              ) : (
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-4 p-4 border rounded-lg">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">New job posted</p>
-                      <p className="text-xs text-muted-foreground">Software Engineer at Tech Corp</p>
-                    </div>
-                    <span className="text-xs text-muted-foreground">2 hours ago</span>
-                  </div>
-                  <div className="flex items-center space-x-4 p-4 border rounded-lg">
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">Event created</p>
-                      <p className="text-xs text-muted-foreground">Alumni Networking Meetup</p>
-                    </div>
-                    <span className="text-xs text-muted-foreground">4 hours ago</span>
-                  </div>
-                  <div className="flex items-center space-x-4 p-4 border rounded-lg">
-                    <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">New member joined</p>
-                      <p className="text-xs text-muted-foreground">John Doe from Class of 2023</p>
-                    </div>
-                    <span className="text-xs text-muted-foreground">6 hours ago</span>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          {/* Recent Activity and Content Status */}
+          <div className="grid gap-6 md:grid-cols-2">
+            <RecentActivity />
+            <UserApprovalDashboard />
+          </div>
         </main>
       </div>
     </>

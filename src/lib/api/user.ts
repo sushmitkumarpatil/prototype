@@ -59,7 +59,7 @@ export interface User {
 // User Management API functions
 export async function getUserProfile(): Promise<{ success: boolean; user: User }> {
   try {
-    const response = await api.get('/api/users/profile');
+    const response = await api.get('/api/profile');
     return response;
   } catch (error: any) {
     console.error('Get user profile error:', error);
@@ -67,9 +67,9 @@ export async function getUserProfile(): Promise<{ success: boolean; user: User }
   }
 }
 
-export async function updateUserProfile(data: UpdateProfileRequest): Promise<{ success: boolean; message: string; user: User }> {
+export async function updateUserProfile(data: UpdateProfileRequest & { full_name?: string; mobile_number?: string; batch_year?: number; course_id?: number }): Promise<{ success: boolean; message: string; user: User }> {
   try {
-    const response = await api.put('/api/users/profile', data);
+    const response = await api.put('/api/profile', data);
     return response;
   } catch (error: any) {
     console.error('Update user profile error:', error);
@@ -80,9 +80,9 @@ export async function updateUserProfile(data: UpdateProfileRequest): Promise<{ s
 export async function uploadProfileImage(file: File): Promise<{ success: boolean; message: string; profile_picture_url: string }> {
   try {
     const formData = new FormData();
-    formData.append('profilePicture', file);
+    formData.append('picture', file); // Backend expects 'picture' not 'profilePicture'
 
-    const response = await api.post('/api/users/profile/picture', formData, {
+    const response = await api.post('/api/profile/picture', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },

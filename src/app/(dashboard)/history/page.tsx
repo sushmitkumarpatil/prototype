@@ -20,7 +20,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 //
-import { getJobs, getEvents, getPosts, deleteJob, deleteEvent, deletePost } from '@/lib/api/content';
+import { getMyJobs, getMyEvents, getMyPosts, deleteJob, deleteEvent, deletePost } from '@/lib/api/content';
 
 interface UserSubmission {
   id: number;
@@ -48,71 +48,126 @@ export default function HistoryPage() {
   const [activeTab, setActiveTab] = useState('all');
 
   useEffect(() => {
+    if (!user?.id) return;
+
     loadUserSubmissions();
-  }, []);
+
+    // Listen for real-time updates
+    const handleRefreshHistory = () => {
+      loadUserSubmissions();
+    };
+
+    window.addEventListener('refreshPosts', handleRefreshHistory);
+    window.addEventListener('refreshJobs', handleRefreshHistory);
+    window.addEventListener('refreshEvents', handleRefreshHistory);
+
+    return () => {
+      window.removeEventListener('refreshPosts', handleRefreshHistory);
+      window.removeEventListener('refreshJobs', handleRefreshHistory);
+      window.removeEventListener('refreshEvents', handleRefreshHistory);
+    };
+  }, [user?.id]);
 
   const loadUserSubmissions = async () => {
     try {
       setLoading(true);
-      
-      // Load all user submissions
-      const [jobsResponse, eventsResponse, postsResponse] = await Promise.all([
-        getJobs(1, 100), // Get all jobs
-        getEvents(1, 100), // Get all events  
-        getPosts(1, 100) // Get all posts
+
+      if (!user?.id) {
+        return;
+      }
+
+      // Load user's own submissions using dedicated endpoints with individual error handling
+      const [jobsResponse, eventsResponse, postsResponse] = await Promise.allSettled([
+        getMyJobs(),
+        getMyEvents(),
+        getMyPosts(user.id)
       ]);
 
       const allSubmissions: UserSubmission[] = [];
 
-      // Add jobs
-      if (jobsResponse.success && jobsResponse.jobs) {
-        const userJobs = jobsResponse.jobs
-          .filter((job: any) => job.created_by === user?.id)
-          .map((job: any) => ({
-            ...job,
-            type: 'job' as const,
-            title: job.title,
-            description: job.description,
-          }));
+      // Add jobs (handle both success and failure)
+      if (jobsResponse.status === 'fulfilled' && jobsResponse.value.success) {
+        const userJobs = jobsResponse.value.jobs.map((job: any) => ({
+          ...job,
+          type: 'job' as const,
+          title: job.title,
+          description: job.description,
+          status: job.approval_status?.toLowerCase(),
+        }));
         allSubmissions.push(...userJobs);
+      } else if (jobsResponse.status === 'rejected') {
+        console.error('Failed to load jobs:', jobsResponse.reason);
       }
 
-      // Add events
-      if (eventsResponse.success && eventsResponse.events) {
-        const userEvents = eventsResponse.events
-          .filter((event: any) => event.created_by === user?.id)
-          .map((event: any) => ({
-            ...event,
-            type: 'event' as const,
-            title: event.title,
-            description: event.description,
-          }));
+      // Add events (handle both success and failure)
+      if (eventsResponse.status === 'fulfilled' && eventsResponse.value.success) {
+        const userEvents = eventsResponse.value.events.map((event: any) => ({
+          ...event,
+          type: 'event' as const,
+          title: event.title,
+          description: event.description,
+          status: event.approval_status?.toLowerCase(),
+        }));
         allSubmissions.push(...userEvents);
+      } else if (eventsResponse.status === 'rejected') {
+        console.error('Failed to load events:', eventsResponse.reason);
       }
 
-      // Add posts
-      if (postsResponse.success && postsResponse.posts) {
-        const userPosts = postsResponse.posts
-          .filter((post: any) => post.author.id === user?.id)
-          .map((post: any) => ({
-            ...post,
-            type: 'post' as const,
-            title: post.title || 'Untitled Post',
-            content: post.content,
-          }));
+      // Add posts (handle both success and failure)
+      if (postsResponse.status === 'fulfilled' && postsResponse.value.success) {
+        const userPosts = postsResponse.value.posts.map((post: any) => ({
+          ...post,
+          type: 'post' as const,
+          title: post.title || 'Untitled Post',
+          content: post.content,
+          status: post.approval_status?.toLowerCase(),
+        }));
         allSubmissions.push(...userPosts);
+      } else if (postsResponse.status === 'rejected') {
+        console.error('Failed to load posts:', postsResponse.reason);
       }
 
       // Sort by creation date (newest first)
       allSubmissions.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-      
+
+      // Debug logging for count consistency
+      const jobCount = allSubmissions.filter(s => s.type === 'job').length;
+      const eventCount = allSubmissions.filter(s => s.type === 'event').length;
+      const postCount = allSubmissions.filter(s => s.type === 'post').length;
+
+      console.log('History counts loaded:', {
+        total: allSubmissions.length,
+        jobs: jobCount,
+        events: eventCount,
+        posts: postCount,
+        timestamp: new Date().toISOString()
+      });
+
       setSubmissions(allSubmissions);
+
+      // Show warning if any API calls failed
+      const failedCalls = [jobsResponse, eventsResponse, postsResponse].filter(
+        response => response.status === 'rejected' ||
+        (response.status === 'fulfilled' && !response.value.success)
+      );
+
+      if (failedCalls.length > 0) {
+        toast({
+          title: 'Partial Load Warning',
+          description: `Some content could not be loaded. ${allSubmissions.length} items loaded successfully.`,
+          variant: 'default',
+        });
+      }
+
     } catch (error: any) {
+      console.error('Error loading user submissions:', error);
       toast({
         title: 'Error',
         description: error.message || 'Failed to load your submissions',
         variant: 'destructive',
       });
+      // Set empty array on error to prevent undefined state
+      setSubmissions([]);
     } finally {
       setLoading(false);
     }

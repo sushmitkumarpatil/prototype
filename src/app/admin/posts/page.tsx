@@ -1,98 +1,129 @@
 'use client';
+
+export const dynamic = 'force-dynamic';
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { posts, users } from "@/lib/mock-data";
-import { FileText, Plus, Search, Edit, Trash2, Eye, Clock, User, MessageSquare, ThumbsUp, Share2 } from "lucide-react";
-import { useState } from "react";
+import { Search, Eye, Clock, User, MessageSquare, RefreshCw, CheckCircle, XCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { getAllPosts, approvePost, rejectPost } from "@/lib/api/admin";
+import { motion } from "framer-motion";
+
+interface Post {
+    id: number;
+    title?: string;
+    content: string;
+    image_url?: string;
+    approval_status: string;
+    author: {
+        id: number;
+        full_name: string;
+        email: string;
+        role: string;
+    };
+    tenant?: {
+        name: string;
+        subdomain: string;
+    };
+    created_at: string;
+}
 
 export default function AdminPostsPage() {
+    const { toast } = useToast();
+    const [loading, setLoading] = useState(true);
+    const [posts, setPosts] = useState<Post[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
-    const [filterAuthor, setFilterAuthor] = useState('all');
-    const [filterDate, setFilterDate] = useState('all');
-
-    const getAuthor = (authorId: number) => users.find((user) => user.id === authorId);
-
-    const filteredPosts = posts.filter(post => {
-        const matchesSearch = (post.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            post.content.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesAuthor = filterAuthor === 'all' || post.authorId.toString() === filterAuthor;
-        
-        // Date filtering logic
-        let matchesDate = true;
-        if (filterDate !== 'all') {
-            const postDate = new Date(post.postedAt);
-            const now = new Date();
-            const oneDay = 24 * 60 * 60 * 1000;
-            const oneWeek = 7 * oneDay;
-            const oneMonth = 30 * oneDay;
-            
-            if (filterDate === 'today') {
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                const tomorrow = new Date(today);
-                tomorrow.setDate(tomorrow.getDate() + 1);
-                matchesDate = postDate >= today && postDate < tomorrow;
-            } else if (filterDate === 'week') {
-                matchesDate = now.getTime() - postDate.getTime() <= oneWeek;
-            } else if (filterDate === 'month') {
-                matchesDate = now.getTime() - postDate.getTime() <= oneMonth;
-            }
-        }
-        
-        return matchesSearch && matchesAuthor && matchesDate;
+    const [pagination, setPagination] = useState({
+        page: 1,
+        limit: 20,
+        total: 0,
+        pages: 0,
+        hasNext: false,
+        hasPrev: false,
     });
 
-    const totalPosts = posts.length;
-    const todayPosts = posts.filter(post => {
-        const postDate = new Date(post.postedAt);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        return postDate >= today && postDate < tomorrow;
-    }).length;
-    const weekPosts = posts.filter(post => {
-        const postDate = new Date(post.postedAt);
-        const now = new Date();
-        const oneWeek = 7 * 24 * 60 * 60 * 1000;
-        return now.getTime() - postDate.getTime() <= oneWeek;
-    }).length;
-    const monthPosts = posts.filter(post => {
-        const postDate = new Date(post.postedAt);
-        const now = new Date();
-        const oneMonth = 30 * 24 * 60 * 60 * 1000;
-        return now.getTime() - postDate.getTime() <= oneMonth;
-    }).length;
+    useEffect(() => {
+        loadPosts();
+    }, []);
 
-    const formatDate = (dateString: string) => {
-        const date = new Date(dateString);
-        const now = new Date();
-        const diffTime = Math.abs(now.getTime() - date.getTime());
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        
-        if (diffDays === 0) {
-            return 'Today';
-        } else if (diffDays === 1) {
-            return 'Yesterday';
-        } else if (diffDays < 7) {
-            return `${diffDays} days ago`;
-        } else if (diffDays < 30) {
-            const weeks = Math.floor(diffDays / 7);
-            return `${weeks} week${weeks > 1 ? 's' : ''} ago`;
-        } else {
-            return date.toLocaleDateString('en-US', { 
-                month: 'short', 
-                day: 'numeric',
-                year: 'numeric'
+    const loadPosts = async (page: number = 1, search?: string) => {
+        try {
+            setLoading(true);
+            const response = await getAllPosts(page, 20, search);
+
+            if (response.success) {
+                setPosts(response.posts);
+                setPagination(response.pagination);
+            }
+        } catch (error: any) {
+            toast({
+                title: 'Error',
+                description: error.message || 'Failed to load posts',
+                variant: 'destructive',
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleApprovePost = async (postId: number) => {
+        try {
+            await approvePost(postId);
+            toast({
+                title: 'Success',
+                description: 'Post approved successfully',
+                variant: 'success',
+            });
+            loadPosts(pagination.page, searchTerm);
+        } catch (error: any) {
+            toast({
+                title: 'Error',
+                description: error.message || 'Failed to approve post',
+                variant: 'destructive',
             });
         }
     };
 
-    const getPostType = (post: typeof posts[0]) => {
+    const handleRejectPost = async (postId: number) => {
+        try {
+            await rejectPost(postId);
+            toast({
+                title: 'Success',
+                description: 'Post rejected successfully',
+                variant: 'success',
+            });
+            loadPosts(pagination.page, searchTerm);
+        } catch (error: any) {
+            toast({
+                title: 'Error',
+                description: error.message || 'Failed to reject post',
+                variant: 'destructive',
+            });
+        }
+    };
+
+    const handleSearch = (value: string) => {
+        setSearchTerm(value);
+        loadPosts(1, value);
+    };
+
+    const filteredPosts = posts.filter(post => {
+        const matchesSearch = (post.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            post.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            post.author.full_name.toLowerCase().includes(searchTerm.toLowerCase());
+
+        return matchesSearch;
+    });
+
+    const totalPosts = pagination.total;
+    const pendingPosts = posts.filter(post => post.approval_status === 'PENDING').length;
+    const approvedPosts = posts.filter(post => post.approval_status === 'APPROVED').length;
+
+    const getPostType = (post: Post) => {
         if (post.title) {
             return { type: 'Article', variant: 'default' as const };
         } else {
@@ -106,204 +137,224 @@ export default function AdminPostsPage() {
     };
 
     return (
-        <div className="flex flex-col gap-6">
+        <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-6"
+        >
             {/* Header */}
             <div className="flex flex-col gap-2">
-                <h1 className="text-3xl font-bold tracking-tight">Content Management</h1>
+                <h1 className="text-3xl font-bold tracking-tight">Post Management</h1>
                 <p className="text-muted-foreground">
-                    Manage posts, monitor engagement, and moderate community content.
+                    Review and manage post submissions from users.
                 </p>
             </div>
 
             {/* Stats Cards */}
-            <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Total Posts</CardTitle>
-                        <FileText className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{totalPosts}</div>
-                        <p className="text-xs text-muted-foreground">+15 since last month</p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Today's Posts</CardTitle>
-                        <Clock className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{todayPosts}</div>
-                        <p className="text-xs text-muted-foreground">New posts today</p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">This Week</CardTitle>
                         <MessageSquare className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{weekPosts}</div>
-                        <p className="text-xs text-muted-foreground">Posts this week</p>
+                        <div className="text-2xl font-bold">{totalPosts}</div>
+                        <p className="text-xs text-muted-foreground">
+                            All posts
+                        </p>
                     </CardContent>
                 </Card>
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">This Month</CardTitle>
-                        <FileText className="h-4 w-4 text-muted-foreground" />
+                        <CardTitle className="text-sm font-medium">Pending Posts</CardTitle>
+                        <Clock className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{monthPosts}</div>
-                        <p className="text-xs text-muted-foreground">Posts this month</p>
+                        <div className="text-2xl font-bold">{pendingPosts}</div>
+                        <p className="text-xs text-muted-foreground">
+                            Awaiting approval
+                        </p>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Approved Posts</CardTitle>
+                        <CheckCircle className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{approvedPosts}</div>
+                        <p className="text-xs text-muted-foreground">
+                            Already approved
+                        </p>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Filtered Results</CardTitle>
+                        <Search className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{filteredPosts.length}</div>
+                        <p className="text-xs text-muted-foreground">
+                            Matching search criteria
+                        </p>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Authors</CardTitle>
+                        <User className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">
+                            {new Set(posts.map(post => post.author.id)).size}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                            Unique authors
+                        </p>
                     </CardContent>
                 </Card>
             </div>
 
-            {/* Filters and Actions */}
+            {/* Post Management */}
             <Card>
                 <CardHeader>
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                         <div>
-                            <CardTitle>Content Management</CardTitle>
+                            <CardTitle className="flex items-center gap-2">
+                                <MessageSquare className="h-5 w-5" />
+                                Post Management
+                            </CardTitle>
                             <CardDescription>
-                                Manage and monitor all posts and content in the system.
+                                Review and manage all post submissions from users.
                             </CardDescription>
                         </div>
-                        <Button className="bg-primary hover:bg-primary/90">
-                            <Plus className="mr-2 h-4 w-4" />
-                            Create New Post
+                        <Button onClick={() => loadPosts(pagination.page, searchTerm)} variant="outline" size="sm">
+                            <RefreshCw className="h-4 w-4 mr-2" />
+                            Refresh
                         </Button>
                     </div>
                 </CardHeader>
                 <CardContent>
-                    {/* Search and Filters */}
+                    {/* Search */}
                     <div className="flex flex-col sm:flex-row gap-4 mb-6">
                         <div className="relative flex-1">
                             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                             <Input
-                                placeholder="Search posts by title or content..."
+                                placeholder="Search posts by title, content, author..."
                                 value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
+                                onChange={(e) => handleSearch(e.target.value)}
                                 className="pl-8"
                             />
                         </div>
-                        <Select value={filterAuthor} onValueChange={setFilterAuthor}>
-                            <SelectTrigger className="w-[180px]">
-                                <SelectValue placeholder="Author" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Authors</SelectItem>
-                                {users.map(user => (
-                                    <SelectItem key={user.id} value={user.id.toString()}>
-                                        {user.name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <Select value={filterDate} onValueChange={setFilterDate}>
-                            <SelectTrigger className="w-[180px]">
-                                <SelectValue placeholder="Date Filter" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Time</SelectItem>
-                                <SelectItem value="today">Today</SelectItem>
-                                <SelectItem value="week">This Week</SelectItem>
-                                <SelectItem value="month">This Month</SelectItem>
-                            </SelectContent>
-                        </Select>
                     </div>
 
-                    {/* Posts Table */}
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Content</TableHead>
-                                <TableHead>Type</TableHead>
-                                <TableHead>Author</TableHead>
-                                <TableHead>Posted</TableHead>
-                                <TableHead>Engagement</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {filteredPosts.map((post) => {
-                                const author = getAuthor(post.authorId);
-                                const postType = getPostType(post);
-                                return (
-                                    <TableRow key={post.id}>
-                                        <TableCell>
-                                            <div className="max-w-md">
-                                                {post.title && (
-                                                    <div className="font-medium mb-1">{post.title}</div>
-                                                )}
-                                                <div className="text-sm text-muted-foreground line-clamp-2">
-                                                    {truncateContent(post.content, 120)}
-                                                </div>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Badge variant={postType.variant}>
-                                                {postType.type}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex items-center gap-2">
-                                                <User className="h-4 w-4 text-muted-foreground" />
-                                                <span className="text-sm">{author?.name}</span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex items-center gap-2">
-                                                <Clock className="h-4 w-4 text-muted-foreground" />
-                                                <span className="text-sm">{formatDate(post.postedAt)}</span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                                                <div className="flex items-center gap-1">
-                                                    <ThumbsUp className="h-3 w-3" />
-                                                    <span>12</span>
-                                                </div>
-                                                <div className="flex items-center gap-1">
-                                                    <MessageSquare className="h-3 w-3" />
-                                                    <span>5</span>
-                                                </div>
-                                                <div className="flex items-center gap-1">
-                                                    <Share2 className="h-3 w-3" />
-                                                    <span>3</span>
-                                                </div>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <div className="flex justify-end gap-2">
-                                                <Button variant="outline" size="sm">
-                                                    <Eye className="h-4 w-4" />
-                                                </Button>
-                                                <Button variant="outline" size="sm">
-                                                    <Edit className="h-4 w-4" />
-                                                </Button>
-                                                <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        </TableCell>
+                    {loading ? (
+                        <div className="flex items-center justify-center py-8">
+                            <RefreshCw className="h-6 w-6 animate-spin mr-2" />
+                            <span>Loading posts...</span>
+                        </div>
+                    ) : (
+                        <div className="rounded-md border">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Content</TableHead>
+                                        <TableHead>Type</TableHead>
+                                        <TableHead>Author</TableHead>
+                                        <TableHead>Status</TableHead>
+                                        <TableHead>Created</TableHead>
+                                        <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
-                                );
-                            })}
-                        </TableBody>
-                    </Table>
-
-                    {filteredPosts.length === 0 && (
-                        <div className="text-center py-8">
-                            <FileText className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                            <h3 className="text-lg font-medium mb-2">No posts found</h3>
-                            <p className="text-muted-foreground">
-                                Try adjusting your search criteria or create a new post.
-                            </p>
+                                </TableHeader>
+                                <TableBody>
+                                    {filteredPosts.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                                                No posts found
+                                            </TableCell>
+                                        </TableRow>
+                                    ) : (
+                                        filteredPosts.map((post) => {
+                                            const postType = getPostType(post);
+                                            return (
+                                                <TableRow key={post.id}>
+                                                    <TableCell>
+                                                        <div className="max-w-md">
+                                                            {post.title && (
+                                                                <div className="font-medium mb-1">{post.title}</div>
+                                                            )}
+                                                            <div className="text-sm text-muted-foreground line-clamp-2">
+                                                                {truncateContent(post.content, 120)}
+                                                            </div>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Badge variant={postType.variant}>
+                                                            {postType.type}
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="font-medium">{post.author.full_name}</div>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Badge
+                                                            variant={post.approval_status === 'APPROVED' ? 'default' :
+                                                                    post.approval_status === 'PENDING' ? 'secondary' : 'destructive'}
+                                                            className={post.approval_status === 'APPROVED' ? 'bg-green-100 text-green-800' :
+                                                                      post.approval_status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                                                                      'bg-red-100 text-red-800'}
+                                                        >
+                                                            {post.approval_status}
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {new Date(post.created_at).toLocaleDateString()}
+                                                    </TableCell>
+                                                    <TableCell className="text-right">
+                                                        <div className="flex items-center justify-end gap-2">
+                                                            {post.approval_status === 'PENDING' && (
+                                                                <>
+                                                                    <Button
+                                                                        size="sm"
+                                                                        variant="outline"
+                                                                        className="text-success border-success hover:bg-success/10"
+                                                                        onClick={() => handleApprovePost(post.id)}
+                                                                    >
+                                                                        <CheckCircle className="h-4 w-4 mr-1" />
+                                                                        Approve
+                                                                    </Button>
+                                                                    <Button
+                                                                        size="sm"
+                                                                        variant="outline"
+                                                                        className="text-destructive border-destructive hover:bg-destructive/10"
+                                                                        onClick={() => handleRejectPost(post.id)}
+                                                                    >
+                                                                        <XCircle className="h-4 w-4 mr-1" />
+                                                                        Reject
+                                                                    </Button>
+                                                                </>
+                                                            )}
+                                                            <Button
+                                                                size="sm"
+                                                                variant="ghost"
+                                                            >
+                                                                <Eye className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        })
+                                    )}
+                                </TableBody>
+                            </Table>
                         </div>
                     )}
                 </CardContent>
             </Card>
-        </div>
+        </motion.div>
     );
 }

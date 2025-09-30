@@ -15,7 +15,7 @@ import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { createPost, createJob, createEvent } from '@/lib/api/content';
+import { createPost, createJob, createEvent, uploadEventImage } from '@/lib/api/content';
 
 export const NewPostDialog = ({ children, onCreated }: { children: React.ReactNode; onCreated?: (post: any) => void }) => {
   const [open, setOpen] = useState(false);
@@ -357,15 +357,56 @@ export const NewEventDialog = ({ children, onCreated }: { children: React.ReactN
     endTime: '',
     maxAttendees: '',
   });
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const { toast } = useToast();
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: 'Invalid File Type',
+          description: 'Please select an image file (JPG, PNG, GIF, etc.)',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: 'File Too Large',
+          description: 'Please select an image smaller than 5MB',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      setImageFile(file);
+
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.title.trim() || !formData.description.trim() || !formData.eventDate) {
+    if (!formData.title.trim() || !formData.description.trim() || !formData.eventDate || !imageFile) {
       toast({
         title: 'Error',
-        description: 'Title, description, and date are required',
+        description: 'Title, description, date, and image are required',
         variant: 'destructive',
       });
       return;
@@ -373,17 +414,29 @@ export const NewEventDialog = ({ children, onCreated }: { children: React.ReactN
 
     try {
       setLoading(true);
-      
+
+      // First upload the image
+      let imageUrl = '';
+      if (imageFile) {
+        const uploadResponse = await uploadEventImage(imageFile);
+        if (uploadResponse.success) {
+          imageUrl = uploadResponse.image_url;
+        } else {
+          throw new Error('Failed to upload image');
+        }
+      }
+
       // Combine date and time
       const startDateTime = new Date(`${formData.eventDate}T${formData.startTime || '09:00'}`);
       const endDateTime = new Date(`${formData.eventDate}T${formData.endTime || '17:00'}`);
-      
+
       const response = await createEvent({
         title: formData.title.trim(),
         description: formData.description.trim(),
         location: formData.location.trim() || undefined,
         start_time: startDateTime.toISOString(),
         end_time: endDateTime.toISOString(),
+        image_url: imageUrl || undefined,
         is_public: true,
       });
 
@@ -406,6 +459,8 @@ export const NewEventDialog = ({ children, onCreated }: { children: React.ReactN
           endTime: '',
           maxAttendees: '',
         });
+        setImageFile(null);
+        setImagePreview(null);
         onCreated?.(response.data?.event);
         setOpen(false);
       } else {
@@ -457,6 +512,41 @@ export const NewEventDialog = ({ children, onCreated }: { children: React.ReactN
                 disabled={loading}
                 required
               />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="event-image" className="text-right">
+                Image *
+              </Label>
+              <div className="col-span-3">
+                <Input
+                  id="event-image"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  disabled={loading}
+                  required
+                  className="mb-2"
+                />
+                {imagePreview && (
+                  <div className="relative">
+                    <img
+                      src={imagePreview}
+                      alt="Event preview"
+                      className="w-full h-32 object-cover rounded-md"
+                    />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      className="absolute top-2 right-2"
+                      onClick={removeImage}
+                      disabled={loading}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                )}
+              </div>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="event-date" className="text-right">

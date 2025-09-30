@@ -3,7 +3,7 @@ import axios, { AxiosError, AxiosResponse, AxiosHeaders } from 'axios';
 import { getAuthToken, removeAuthData, getRefreshToken, saveRefreshToken } from './auth';
 import { refreshTokenRequest } from './refreshClient';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 const api = axios.create({
   baseURL: API_URL,

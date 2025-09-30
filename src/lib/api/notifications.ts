@@ -81,7 +81,7 @@ export async function getNotificationById(notificationId: number): Promise<{ suc
 
 export async function markNotificationAsRead(notificationId: number): Promise<{ success: boolean; message: string }> {
   try {
-    const response = await api.put(`/api/notifications/${notificationId}/read`);
+    const response = await api.post(`/api/notifications/${notificationId}/read`);
     return response;
   } catch (error: any) {
     console.error('Mark notification as read error:', error);
@@ -161,7 +161,7 @@ export async function unregisterDeviceToken(token: string): Promise<{ success: b
   }
 }
 
-export async function getDeviceTokens(): Promise<{ success: boolean; tokens: Array<{ id: number; token: string; platform: string; created_at: string; last_seen: string }> }> {
+export async function getDeviceTokens(): Promise<{ success: boolean; tokens: Array<{ id: number; token: string; platform: string; created_at: string }> }> {
   try {
     const response = await api.get('/api/device-tokens');
     return response;

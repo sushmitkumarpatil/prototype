@@ -28,6 +28,20 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { getUserProfile, updateUserProfile, uploadProfileImage } from '@/lib/api/user';
 
+// Helper function to get the correct image URL
+const getImageUrl = (imageUrl: string | null | undefined) => {
+  if (!imageUrl) return undefined;
+  // If it's already a full URL (external), return as is
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+    return imageUrl;
+  }
+  // If it's a relative path (upload), prepend the backend URL
+  if (imageUrl.startsWith('/uploads/')) {
+    return `http://localhost:8000${imageUrl}`;
+  }
+  return imageUrl;
+};
+
 export default function ProfilePage() {
   const { user, refreshUser } = useAuth();
   const { toast } = useToast();
@@ -84,8 +98,11 @@ export default function ProfilePage() {
   const handleSave = async () => {
     try {
       setSaving(true);
-      
+
+      console.log('Saving profile with data:', formData);
       const response = await updateUserProfile(formData);
+      console.log('Profile update response:', response);
+
       if (response.success) {
         setProfile(response.user);
         setEditing(false);
@@ -94,8 +111,11 @@ export default function ProfilePage() {
           title: 'Profile Updated',
           description: 'Your profile has been updated successfully.',
         });
+      } else {
+        throw new Error(response.message || 'Failed to update profile');
       }
     } catch (err: any) {
+      console.error('Profile update error:', err);
       toast({
         title: 'Update Failed',
         description: err.message || 'Failed to update profile',
@@ -189,8 +209,8 @@ export default function ProfilePage() {
                   <CardContent className="space-y-4">
                     <div className="flex flex-col items-center space-y-4">
                       <Avatar className="h-32 w-32">
-                        <AvatarImage 
-                          src={profile?.profile?.profile_picture_url} 
+                        <AvatarImage
+                          src={getImageUrl(profile?.profile?.profile_picture_url)}
                           alt={user?.full_name}
                         />
                         <AvatarFallback className="text-2xl">
