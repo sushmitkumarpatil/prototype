@@ -64,6 +64,9 @@ export interface Event {
     id: number;
     full_name: string;
     email: string;
+    profile?: {
+      profile_picture_url?: string;
+    };
   };
   rsvps?: Array<{
     id: number;
@@ -74,6 +77,13 @@ export interface Event {
       full_name: string;
     };
   }>;
+  rsvp_counts?: {
+    interested: number;
+    going: number;
+    notGoing: number;
+    total: number;
+  };
+  user_rsvp_status?: 'INTERESTED' | 'GOING' | 'NOT_GOING' | null;
 }
 
 export interface CreateEventRequest {
@@ -350,12 +360,43 @@ export async function getMyEvents(): Promise<{ success: boolean; events: Event[]
 }
 
 // RSVP functions
-export async function rsvpToEvent(eventId: number, status: 'INTERESTED' | 'GOING' | 'NOT_GOING'): Promise<{ success: boolean; message: string }> {
+export async function rsvpToEvent(eventId: number, status: 'INTERESTED' | 'GOING' | 'NOT_GOING'): Promise<any> {
   try {
     const response = await api.post(`/api/events/${eventId}/rsvp`, { status });
     return response;
   } catch (error: any) {
     console.error('RSVP to event error:', error);
+    throw error;
+  }
+}
+
+export async function getUserRSVP(eventId: number): Promise<any> {
+  try {
+    const response = await api.get(`/api/events/${eventId}/rsvp`);
+    return response;
+  } catch (error: any) {
+    console.error('Get user RSVP error:', error);
+    throw error;
+  }
+}
+
+export async function getEventRSVPs(eventId: number, status?: string): Promise<any> {
+  try {
+    const params = status ? { status } : {};
+    const response = await api.get(`/api/events/${eventId}/rsvps`, { params });
+    return response;
+  } catch (error: any) {
+    console.error('Get event RSVPs error:', error);
+    throw error;
+  }
+}
+
+export async function cancelRSVP(eventId: number): Promise<any> {
+  try {
+    const response = await api.delete(`/api/events/${eventId}/rsvp`);
+    return response;
+  } catch (error: any) {
+    console.error('Cancel RSVP error:', error);
     throw error;
   }
 }

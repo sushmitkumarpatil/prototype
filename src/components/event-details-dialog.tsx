@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -12,25 +12,141 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
-import { 
-  Calendar, 
-  Clock, 
-  MapPin, 
-  Users, 
+import {
+  Calendar,
+  Clock,
+  MapPin,
+  Users,
   ExternalLink,
-  CalendarPlus
+  CalendarPlus,
+  Heart,
+  Check,
+  X
 } from 'lucide-react';
-import { Event } from '@/lib/api/content';
+import { Event, rsvpToEvent, getUserRSVP, cancelRSVP } from '@/lib/api/content';
 import ApprovalStatusBadge from './approval-status-badge';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface EventDetailsDialogProps {
   event: Event | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onRSVPUpdate?: () => void;
 }
 
-export function EventDetailsDialog({ event, open, onOpenChange }: EventDetailsDialogProps) {
-  if (!event) return null;
+export function EventDetailsDialog({ event, open, onOpenChange, onRSVPUpdate }: EventDetailsDialogProps) {
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const [rsvpStatus, setRsvpStatus] = useState<'INTERESTED' | 'GOING' | 'NOT_GOING' | null>(null);
+  const [rsvpLoading, setRsvpLoading] = useState(false);
+  const [rsvpCounts, setRsvpCounts] = useState({
+    interested: 0,
+    going: 0,
+    notGoing: 0,
+    total: 0,
+  });
+
+  // Load user's RSVP status when dialog opens
+  useEffect(() => {
+    if (open && event) {
+      loadUserRSVP();
+      calculateRSVPCounts();
+    }
+  }, [open, event]);
+
+  const loadUserRSVP = async () => {
+    try {
+      const response = await getUserRSVP(event.id);
+      if (response.data?.rsvp) {
+        setRsvpStatus(response.data.rsvp.status);
+      } else {
+        setRsvpStatus(null);
+      }
+    } catch (error) {
+      console.error('Error loading RSVP:', error);
+    }
+  };
+
+  const calculateRSVPCounts = () => {
+    if (event.rsvps) {
+      const counts = {
+        interested: event.rsvps.filter(r => r.status === 'INTERESTED').length,
+        going: event.rsvps.filter(r => r.status === 'GOING').length,
+        notGoing: event.rsvps.filter(r => r.status === 'NOT_GOING').length,
+        total: event.rsvps.length,
+      };
+      setRsvpCounts(counts);
+    }
+  };
+
+  const handleRSVPAction = async (status: 'INTERESTED' | 'GOING' | 'NOT_GOING') => {
+    try {
+      setRsvpLoading(true);
+      const response = await rsvpToEvent(event.id, status);
+
+      if (response.success) {
+        setRsvpStatus(status);
+
+        // Update counts from response
+        if (response.data?.counts) {
+          setRsvpCounts(response.data.counts);
+        }
+
+        toast({
+          title: 'RSVP Updated',
+          description: `You marked yourself as ${status.toLowerCase().replace('_', ' ')}`,
+        });
+
+        // Trigger parent refresh
+        if (onRSVPUpdate) {
+          onRSVPUpdate();
+        }
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.response?.data?.error || 'Failed to update RSVP',
+        variant: 'destructive',
+      });
+    } finally {
+      setRsvpLoading(false);
+    }
+  };
+
+  const handleCancelRSVP = async () => {
+    try {
+      setRsvpLoading(true);
+      const response = await cancelRSVP(event.id);
+
+      if (response.success) {
+        setRsvpStatus(null);
+
+        // Update counts from response
+        if (response.data?.counts) {
+          setRsvpCounts(response.data.counts);
+        }
+
+        toast({
+          title: 'RSVP Cancelled',
+          description: 'Your RSVP has been cancelled',
+        });
+
+        // Trigger parent refresh
+        if (onRSVPUpdate) {
+          onRSVPUpdate();
+        }
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.response?.data?.error || 'Failed to cancel RSVP',
+        variant: 'destructive',
+      });
+    } finally {
+      setRsvpLoading(false);
+    }
+  };
 
   // Helper function to get the correct image URL
   const getImageUrl = (imageUrl: string) => {
@@ -81,23 +197,28 @@ export function EventDetailsDialog({ event, open, onOpenChange }: EventDetailsDi
   };
 
   const handleRSVP = () => {
-    if (event.rsvp_link) {
+    if (event && event.rsvp_link) {
       window.open(event.rsvp_link, '_blank');
     }
   };
 
   const addToCalendar = () => {
+    if (!event) return;
+
     const startDate = new Date(event.start_time);
     const endDate = event.end_time ? new Date(event.end_time) : new Date(startDate.getTime() + 2 * 60 * 60 * 1000); // Default 2 hours
-    
+
     const formatCalendarDate = (date: Date) => {
       return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
     };
 
     const calendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(event.title)}&dates=${formatCalendarDate(startDate)}/${formatCalendarDate(endDate)}&details=${encodeURIComponent(event.description || '')}&location=${encodeURIComponent(event.location || '')}`;
-    
+
     window.open(calendarUrl, '_blank');
   };
+
+  // Early return if no event - MUST be after all hooks
+  if (!event) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -202,35 +323,151 @@ export function EventDetailsDialog({ event, open, onOpenChange }: EventDetailsDi
 
           <Separator />
 
-          {/* Action Buttons */}
-          <div className="space-y-3">
-            <h3 className="font-semibold">Join This Event</h3>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Button 
-                onClick={addToCalendar}
-                variant="outline"
-                className="flex-1"
-              >
-                <CalendarPlus className="h-4 w-4 mr-2" />
-                Add to Calendar
-              </Button>
-              
-              {event.rsvp_link && (
-                <Button 
-                  onClick={handleRSVP}
-                  className="flex-1"
-                >
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  RSVP Now
-                </Button>
+          {/* RSVP Section */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold">RSVP to This Event</h3>
+              {rsvpCounts.total > 0 && (
+                <Badge variant="secondary" className="flex items-center gap-1">
+                  <Users className="h-3 w-3" />
+                  {rsvpCounts.total} {rsvpCounts.total === 1 ? 'person' : 'people'}
+                </Badge>
               )}
             </div>
-            
-            {!event.rsvp_link && (
-              <p className="text-xs text-muted-foreground text-center">
-                RSVP link not available yet. Check back later or contact the organizer.
-              </p>
+
+            {/* RSVP Stats */}
+            {rsvpCounts.total > 0 && (
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="p-2 rounded-lg bg-green-50 dark:bg-green-950">
+                  <div className="text-lg font-bold text-green-600 dark:text-green-400">
+                    {rsvpCounts.going}
+                  </div>
+                  <div className="text-xs text-muted-foreground">Going</div>
+                </div>
+                <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-950">
+                  <div className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                    {rsvpCounts.interested}
+                  </div>
+                  <div className="text-xs text-muted-foreground">Interested</div>
+                </div>
+                <div className="p-2 rounded-lg bg-gray-50 dark:bg-gray-900">
+                  <div className="text-lg font-bold text-gray-600 dark:text-gray-400">
+                    {rsvpCounts.notGoing}
+                  </div>
+                  <div className="text-xs text-muted-foreground">Can't Go</div>
+                </div>
+              </div>
             )}
+
+            {/* RSVP Buttons */}
+            {event.approval_status === 'APPROVED' && (
+              <div className="space-y-2">
+                {!rsvpStatus ? (
+                  <div className="grid grid-cols-3 gap-2">
+                    <Button
+                      onClick={() => handleRSVPAction('GOING')}
+                      disabled={rsvpLoading}
+                      className="bg-green-600 hover:bg-green-700"
+                      size="sm"
+                    >
+                      <Check className="h-4 w-4 mr-1" />
+                      Going
+                    </Button>
+                    <Button
+                      onClick={() => handleRSVPAction('INTERESTED')}
+                      disabled={rsvpLoading}
+                      variant="outline"
+                      size="sm"
+                    >
+                      <Heart className="h-4 w-4 mr-1" />
+                      Interested
+                    </Button>
+                    <Button
+                      onClick={() => handleRSVPAction('NOT_GOING')}
+                      disabled={rsvpLoading}
+                      variant="outline"
+                      size="sm"
+                    >
+                      <X className="h-4 w-4 mr-1" />
+                      Can't Go
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-primary/10">
+                      <span className="text-sm font-medium">
+                        You're {rsvpStatus === 'GOING' ? 'going' : rsvpStatus === 'INTERESTED' ? 'interested' : "can't go"}
+                      </span>
+                      <Button
+                        onClick={handleCancelRSVP}
+                        disabled={rsvpLoading}
+                        variant="ghost"
+                        size="sm"
+                      >
+                        Change
+                      </Button>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      {rsvpStatus !== 'GOING' && (
+                        <Button
+                          onClick={() => handleRSVPAction('GOING')}
+                          disabled={rsvpLoading}
+                          variant="outline"
+                          size="sm"
+                        >
+                          <Check className="h-4 w-4 mr-1" />
+                          Going
+                        </Button>
+                      )}
+                      {rsvpStatus !== 'INTERESTED' && (
+                        <Button
+                          onClick={() => handleRSVPAction('INTERESTED')}
+                          disabled={rsvpLoading}
+                          variant="outline"
+                          size="sm"
+                        >
+                          <Heart className="h-4 w-4 mr-1" />
+                          Interested
+                        </Button>
+                      )}
+                      {rsvpStatus !== 'NOT_GOING' && (
+                        <Button
+                          onClick={() => handleRSVPAction('NOT_GOING')}
+                          disabled={rsvpLoading}
+                          variant="outline"
+                          size="sm"
+                        >
+                          <X className="h-4 w-4 mr-1" />
+                          Can't Go
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* External RSVP Link (if provided) */}
+            {event.rsvp_link && (
+              <Button
+                onClick={() => window.open(event.rsvp_link, '_blank')}
+                variant="outline"
+                className="w-full"
+              >
+                <ExternalLink className="h-4 w-4 mr-2" />
+                External RSVP Link
+              </Button>
+            )}
+
+            {/* Add to Calendar */}
+            <Button
+              onClick={addToCalendar}
+              variant="outline"
+              className="w-full"
+            >
+              <CalendarPlus className="h-4 w-4 mr-2" />
+              Add to Calendar
+            </Button>
           </div>
         </div>
       </DialogContent>

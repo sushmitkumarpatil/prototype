@@ -78,6 +78,13 @@ export function SocketProvider({ children }: SocketProviderProps) {
         window.dispatchEvent(new CustomEvent('refreshEvents', { detail: data }));
       });
 
+      // Event RSVP updates
+      socketInstance.on('event_rsvp', (data) => {
+        console.log('Event RSVP update:', data);
+        // Trigger refresh of events to update RSVP counts
+        window.dispatchEvent(new CustomEvent('refreshEvents', { detail: data }));
+      });
+
       // Online users updates
       socketInstance.on('online_users_update', (users) => {
         setOnlineUsers(users);

@@ -132,11 +132,6 @@ const EventCard = ({ event, onViewDetails }: { event: Event; onViewDetails: (eve
             Show Details
           </Button>
         </div>
-        {!event.rsvp_link && (
-          <p className="w-full text-center text-xs text-muted-foreground">
-            RSVP link not available yet. Check back later or contact the organizer.
-          </p>
-        )}
       </CardFooter>
     </Card>
   )
@@ -364,6 +359,7 @@ export default function EventsPage() {
         event={selectedEvent}
         open={eventDetailsOpen}
         onOpenChange={setEventDetailsOpen}
+        onRSVPUpdate={loadEvents}
       />
     </div>
   );
