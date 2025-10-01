@@ -2,23 +2,23 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useState, useEffect } from 'react';
 import AnimatedSection from "@/components/animated-section";
 import { PublicFooter } from "@/components/public-footer";
 import { PublicHeader } from "@/components/public-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { users } from "@/lib/mock-data";
-import { getJobs, getEvents, Job, Event } from "@/lib/api/content";
-import { motion } from "framer-motion";
-import { ArrowRight, Briefcase, Calendar, MapPin, Users, ChevronDown, User, Shield } from "lucide-react";
-import Link from "next/link";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Event, getEvents, getJobs, Job } from "@/lib/api/content";
+import { users } from "@/lib/mock-data";
+import { motion } from "framer-motion";
+import { ArrowRight, Briefcase, Calendar, ChevronDown, MapPin, Shield, User, Users } from "lucide-react";
+import Link from "next/link";
+import { useEffect, useState } from 'react';
 
 const JobCard = ({ job }: { job: Job }) => {
   return (

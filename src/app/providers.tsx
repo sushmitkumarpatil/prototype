@@ -1,13 +1,13 @@
 'use client';
 
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { NProgressProvider } from '@/components/nprogress-provider';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/toaster';
-import { NProgressProvider } from '@/components/nprogress-provider';
-import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { MessagingProvider } from '@/contexts/MessagingContext';
 import { NotificationProvider } from '@/contexts/NotificationContext';
 import { SocketProvider } from '@/contexts/SocketContext';
-import { MessagingProvider } from '@/contexts/MessagingContext';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (

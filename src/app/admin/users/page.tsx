@@ -1,23 +1,22 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { ErrorDisplay } from '@/components/ErrorDisplay';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import {
-  Users,
-  UserCheck,
-  UserX,
-  Search,
-  Filter,
-  MoreHorizontal
-} from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { getAllUsers } from '@/lib/api/admin';
+import {
+  MoreHorizontal,
+  Search,
+  UserCheck,
+  Users,
+  UserX
+} from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 export default function AdminUsersPage() {
   const { user } = useAuth();
@@ -34,23 +33,42 @@ export default function AdminUsersPage() {
     }
   }, [user]);
 
-  const loadUsers = async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  // const loadUsers = async () => {
+  //   try {
+  //     setLoading(true);
+  //     setError(null);
 
-      const usersResponse = await getAllUsers(1, 50);
-      if (usersResponse.success && usersResponse.users) {
-        setUsers(usersResponse.users);
-      } else {
-        setUsers([]);
-      }
-    } catch (err: any) {
-      setError(err.message || 'Failed to load users');
-    } finally {
-      setLoading(false);
+  //     const usersResponse = await getAllUsers(1, 50);
+  //     if (usersResponse.success && usersResponse.users) {
+  //       setUsers(usersResponse.users);
+  //     } else {
+  //       setUsers([]);
+  //     }
+  //   } catch (err: any) {
+  //     setError(err.message || 'Failed to load users');
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
+  const loadUsers = async () => {
+  try {
+    setLoading(true);
+    setError(null);
+
+    const usersResponse = await getAllUsers(1, 50);
+    if (usersResponse.success && usersResponse.users) {
+      console.log('User statuses:', usersResponse.users.map(u => u.account_status)); // Add this
+      setUsers(usersResponse.users);
+    } else {
+      setUsers([]);
     }
-  };
+  } catch (err: any) {
+    setError(err.message || 'Failed to load users');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleUserStatusUpdate = async (userId: number, status: string) => {
     try {
@@ -97,10 +115,16 @@ export default function AdminUsersPage() {
     }
   };
 
+  // const filteredUsers = users.filter(user => {
+  //   const matchesSearch = user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  //                        user.email?.toLowerCase().includes(searchTerm.toLowerCase());
+  //   const matchesFilter = filterStatus === 'all' || user.account_status === filterStatus;
+  //   return matchesSearch && matchesFilter;
+  // });
+
   const filteredUsers = users.filter(user => {
-    const matchesSearch = user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.email?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesFilter = filterStatus === 'all' || user.account_status === filterStatus;
+    const matchesSearch = user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) || user.email?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesFilter = filterStatus === 'all' || user.account_status?.toUpperCase() === filterStatus;
     return matchesSearch && matchesFilter;
   });
 
